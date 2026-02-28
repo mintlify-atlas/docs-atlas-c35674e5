@@ -1,0 +1,93 @@
+{
+  "projectType": "frontend",
+  "projectName": "Kars Next.js Template",
+  "projectDescription": "A comprehensive Next.js starter template with UI components, API utilities, authentication, and animations",
+  "theme": "palm",
+  "primaryColor": "#ff6666",
+  "lightColor": "#ff8888",
+  "darkColor": "#cc5252",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/ui-components",
+              "features/api-client",
+              "features/authentication",
+              "features/rate-limiting",
+              "features/validation",
+              "features/animations"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/configuration",
+              "guides/database-setup",
+              "guides/deployment",
+              "guides/customization"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Components",
+            "pages": [
+              "api/components/ui-components",
+              "api/components/forms"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "api/utilities/api-client",
+              "api/utilities/validation",
+              "api/utilities/rate-limiter"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "30+ Pre-built ShadCN UI Components",
+    "Custom Axios API Client with Authentication",
+    "Built-in Rate Limiting (Redis & In-Memory)",
+    "Zod Schema Validation",
+    "Smooth Scroll with Lenis",
+    "Animation Support (AOS & GSAP)",
+    "Prisma Database Integration",
+    "TypeScript & Tailwind CSS"
+  ],
+  "publicApiSurface": [
+    "api.get()",
+    "api.post()",
+    "api.put()",
+    "api.delete()",
+    "api.patch()",
+    "withRateLimit()",
+    "withAuth()",
+    "validateRequestBody()",
+    "validateQueryParams()",
+    "createRateLimiter()",
+    "InMemoryRateLimiter",
+    "RedisRateLimiter",
+    "successResponse()",
+    "handleAndReturnErrorResponse()",
+    "APIError"
+  ]
+}
