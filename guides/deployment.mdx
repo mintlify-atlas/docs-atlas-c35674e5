@@ -1,0 +1,408 @@
+---
+title: Deployment Guide
+description: Deploy your Kars Next.js template to production on Vercel, Railway, or other platforms
+---
+
+The Kars Next.js template is designed to be deployed on modern hosting platforms with minimal configuration. This guide covers deployment to popular platforms and best practices.
+
+## Pre-Deployment Checklist
+
+Before deploying, ensure you have:
+
+<Steps>
+  <Step title="Environment variables configured">
+    All required environment variables are set for production.
+  </Step>
+  
+  <Step title="Database setup">
+    Production database is provisioned and accessible.
+  </Step>
+  
+  <Step title="Build succeeds locally">
+    Run `npm run build` to verify the build completes without errors.
+  </Step>
+  
+  <Step title="Dependencies are up to date">
+    Run `npm install` to ensure all dependencies are properly installed.
+  </Step>
+</Steps>
+
+## Environment Variables
+
+Your production deployment needs these environment variables:
+
+```bash
+# Required
+NEXT_PUBLIC_APP_URL="https://yourdomain.com"
+DATABASE_URL="postgresql://user:password@host:5432/dbname"
+
+# Optional but recommended
+REDIS_URL="redis://user:password@host:6379"
+
+# Platform-specific (Coolify)
+SOURCE_COMMIT="$SOURCE_COMMIT"
+```
+
+<Warning>
+  Never commit `.env.local` or `.env` files to your repository. Use your platform's environment variable management instead.
+</Warning>
+
+## Build Configuration
+
+### Build Command
+
+The template uses standard Next.js build commands (see `package.json:5-11`):
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "postinstall": "npx prisma generate",
+    "test": "next typegen && tsc --noEmit"
+  }
+}
+```
+
+**Build command**: `npm run build`
+
+**Start command**: `npm run start`
+
+**Install command**: `npm install` (automatically runs `npx prisma generate` via postinstall)
+
+### Nixpacks Configuration
+
+For platforms using Nixpacks (Railway, Coolify), the template includes `nixpacks.toml`:
+
+```toml
+[phases.setup]
+nixPkgs = ["nodejs_latest"]
+```
+
+This ensures the latest Node.js version is used during builds.
+
+## Deployment Platforms
+
+### Vercel (Recommended)
+
+Vercel is the official platform for Next.js and requires minimal configuration.
+
+<Steps>
+  <Step title="Connect your repository">
+    1. Go to [vercel.com](https://vercel.com)
+    2. Click "Add New Project"
+    3. Import your Git repository
+  </Step>
+  
+  <Step title="Configure build settings">
+    Vercel automatically detects Next.js projects. Override settings if needed:
+    
+    - **Framework Preset**: Next.js
+    - **Build Command**: `npm run build`
+    - **Output Directory**: `.next`
+    - **Install Command**: `npm install`
+  </Step>
+  
+  <Step title="Add environment variables">
+    In the Vercel dashboard, go to:
+    
+    Settings → Environment Variables
+    
+    Add all required variables:
+    ```bash
+    NEXT_PUBLIC_APP_URL
+    DATABASE_URL
+    REDIS_URL
+    ```
+  </Step>
+  
+  <Step title="Deploy">
+    Click "Deploy" and Vercel will build and deploy your application.
+  </Step>
+</Steps>
+
+#### Database on Vercel
+
+Vercel offers integrated PostgreSQL:
+
+1. Go to the Storage tab
+2. Create a new Postgres database
+3. Vercel automatically adds environment variables
+4. Run migrations: `npx prisma migrate deploy`
+
+### Railway
+
+Railway provides simple deployment with built-in database hosting.
+
+<Steps>
+  <Step title="Create a new project">
+    1. Go to [railway.app](https://railway.app)
+    2. Click "New Project"
+    3. Select "Deploy from GitHub repo"
+  </Step>
+  
+  <Step title="Add PostgreSQL">
+    1. Click "New" → "Database" → "PostgreSQL"
+    2. Railway automatically creates `DATABASE_URL`
+  </Step>
+  
+  <Step title="Configure environment variables">
+    Add in the Variables tab:
+    ```bash
+    NEXT_PUBLIC_APP_URL=${{RAILWAY_PUBLIC_DOMAIN}}
+    DATABASE_URL=${{DATABASE_URL}}
+    ```
+  </Step>
+  
+  <Step title="Set build configuration">
+    Railway auto-detects Next.js. The `nixpacks.toml` file ensures proper Node.js version.
+    
+    Add a custom start command if needed:
+    ```bash
+    npm run start
+    ```
+  </Step>
+  
+  <Step title="Deploy">
+    Railway automatically deploys on every push to your main branch.
+  </Step>
+</Steps>
+
+### Coolify
+
+Self-hosted deployment with Coolify.
+
+<Steps>
+  <Step title="Create a new application">
+    1. In Coolify dashboard, create a new application
+    2. Connect your Git repository
+    3. Select the branch to deploy
+  </Step>
+  
+  <Step title="Configure build pack">
+    - **Build Pack**: Nixpacks
+    - The template's `nixpacks.toml` is automatically detected
+  </Step>
+  
+  <Step title="Environment variables">
+    Add to your Coolify application:
+    ```bash
+    NEXT_PUBLIC_APP_URL="https://yourdomain.com"
+    DATABASE_URL="postgresql://..."
+    REDIS_URL="redis://..."
+    SOURCE_COMMIT="$SOURCE_COMMIT"
+    ```
+    
+    <Note>
+      Coolify provides `$SOURCE_COMMIT` automatically for deployment tracking.
+    </Note>
+  </Step>
+  
+  <Step title="Deploy">
+    Click "Deploy" to start the build process.
+  </Step>
+</Steps>
+
+### Docker Deployment
+
+For custom Docker deployments, create a `Dockerfile`:
+
+```dockerfile
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npx prisma generate
+RUN npm run build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV production
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+EXPOSE 3000
+ENV PORT 3000
+
+CMD ["node", "server.js"]
+```
+
+Enable standalone output in `next.config.ts`:
+
+```typescript
+const nextConfig = {
+  output: 'standalone',
+  // ... other config
+}
+```
+
+## Database Migrations
+
+Run database migrations after deployment:
+
+### Automatic Migrations
+
+Add to your build command:
+
+```bash
+npm run build && npx prisma migrate deploy
+```
+
+### Manual Migrations
+
+Connect to your production database and run:
+
+```bash
+npx prisma migrate deploy
+```
+
+<Warning>
+  Use `prisma migrate deploy` in production, NOT `prisma migrate dev`. The deploy command applies pending migrations without prompting.
+</Warning>
+
+## Post-Deployment
+
+<Steps>
+  <Step title="Verify environment variables">
+    Check that all environment variables are set correctly:
+    - `NEXT_PUBLIC_APP_URL` matches your domain
+    - Database connections work
+    - Redis is accessible (if used)
+  </Step>
+  
+  <Step title="Test critical paths">
+    - Homepage loads correctly
+    - API routes respond
+    - Database queries work
+    - Authentication flows (if applicable)
+  </Step>
+  
+  <Step title="Monitor performance">
+    Use your platform's monitoring tools:
+    - Vercel Analytics
+    - Railway Metrics
+    - Custom APM solutions
+  </Step>
+  
+  <Step title="Set up custom domain">
+    Configure your custom domain in your platform's settings and update `NEXT_PUBLIC_APP_URL`.
+  </Step>
+</Steps>
+
+## Continuous Deployment
+
+Most platforms automatically deploy on Git push:
+
+### GitHub Actions Example
+
+For custom CI/CD, create `.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run tests
+        run: npm run test
+        
+      - name: Build
+        run: npm run build
+        
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v20
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.ORG_ID }}
+          vercel-project-id: ${{ secrets.PROJECT_ID }}
+```
+
+## Troubleshooting
+
+### Build fails with Prisma errors
+
+```bash
+# Ensure postinstall script runs
+npm install
+
+# Manually generate Prisma client
+npx prisma generate
+```
+
+### Environment variables not working
+
+- Ensure `NEXT_PUBLIC_` prefix for client-side variables
+- Restart your deployment after adding variables
+- Check variable names for typos
+
+### Database connection fails
+
+- Verify connection string format
+- Check database allows connections from your deployment IP
+- Ensure SSL is enabled if required
+
+### Build succeeds but site doesn't load
+
+- Check build logs for warnings
+- Verify `NEXT_PUBLIC_APP_URL` is set correctly
+- Check that the start command is `npm run start`
+
+## Performance Optimization
+
+### Enable caching
+
+Next.js automatically caches static assets. Configure cache headers in `next.config.ts`:
+
+```typescript
+const nextConfig = {
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=3600' },
+        ],
+      },
+    ]
+  },
+}
+```
+
+### Use Redis for rate limiting
+
+The template includes Redis rate limiting. Set `REDIS_URL` for production:
+
+```bash
+REDIS_URL="redis://default:password@host:6379"
+```
+
+### Enable compression
+
+Most platforms enable compression automatically. For custom servers, ensure gzip/brotli is enabled.
+
+<Note>
+  Vercel and Railway automatically optimize your deployment with CDN, compression, and edge caching.
+</Note>

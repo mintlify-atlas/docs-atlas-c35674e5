@@ -1,0 +1,363 @@
+---
+title: Installation
+description: Get the Kars Next.js Template installed and configured in your development environment
+---
+
+# Installation
+
+There are multiple ways to get started with the Kars Next.js Template. Choose the method that works best for you.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** 18.17 or later
+- **npm**, **yarn**, or **pnpm** package manager
+- **Git** for cloning the repository (if using manual installation)
+
+<Tip>
+  We recommend using the latest LTS version of Node.js for the best experience.
+</Tip>
+
+## Installation Methods
+
+<Tabs>
+  <Tab title="create-kapp (Recommended)">
+    The fastest way to get started is using the official **create-kapp** CLI tool.
+
+    <Steps>
+      <Step title="Install create-kapp globally">
+        Install the CLI tool globally on your system:
+
+        <CodeGroup>
+        ```bash npm
+        npm install create-kapp@latest -g
+        ```
+
+        ```bash yarn
+        yarn global add create-kapp@latest
+        ```
+
+        ```bash pnpm
+        pnpm add -g create-kapp@latest
+        ```
+        </CodeGroup>
+      </Step>
+
+      <Step title="Run the CLI">
+        Initialize your new project:
+
+        ```bash
+        create-kapp
+        ```
+
+        You'll see an interactive prompt:
+
+        ```bash
+        o   --------------------------------------------+
+        |                                               |
+        |   Welcome to KAPP. Let's make your project!   |
+        |                                               |
+        o   --------------------------------------------+
+        |
+        ?   Which Template Category would you like to use? » - Use arrow-keys. Return to submit.
+        >   Next.js
+            Discord.js
+            General
+        ```
+      </Step>
+
+      <Step title="Follow the prompts">
+        - Select **Next.js** from the template categories
+        - Choose the **Quickstart** template
+        - Enter your project name
+        - Choose your preferred package manager
+
+        The CLI will automatically:
+        - Download the template
+        - Install all dependencies
+        - Set up your environment files
+      </Step>
+    </Steps>
+
+    <Note>
+      The create-kapp CLI provides the smoothest installation experience and automatically handles all setup steps.
+    </Note>
+  </Tab>
+
+  <Tab title="GitHub Clone">
+    Clone the repository directly from GitHub for more control over the installation.
+
+    <Steps>
+      <Step title="Clone the repository">
+        Clone into a new folder:
+
+        ```bash
+        gh repo clone kars1996/Template my-project
+        cd my-project
+        ```
+
+        Or clone into an existing folder:
+
+        ```bash
+        gh repo clone kars1996/Template .
+        ```
+      </Step>
+
+      <Step title="Install dependencies">
+        Install all required packages:
+
+        <CodeGroup>
+        ```bash npm
+        npm install
+        ```
+
+        ```bash yarn
+        yarn
+        ```
+
+        ```bash pnpm
+        pnpm install
+        ```
+        </CodeGroup>
+
+        <Note>
+          The `postinstall` script will automatically run `prisma generate` to set up your database client.
+        </Note>
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Download ZIP">
+    Download the template as a ZIP file from GitHub.
+
+    <Steps>
+      <Step title="Download the template">
+        1. Visit [https://github.com/kars1996/Template](https://github.com/kars1996/Template)
+        2. Click the green **Code** button
+        3. Select **Download ZIP**
+        4. Extract the ZIP file to your desired location
+      </Step>
+
+      <Step title="Install dependencies">
+        Navigate to the extracted folder and install dependencies:
+
+        ```bash
+        cd path/to/extracted/folder
+        npm install
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Environment Setup
+
+After installation, you need to configure your environment variables.
+
+<Steps>
+  <Step title="Create .env file">
+    Copy the example environment file:
+
+    ```bash
+    cp .env.example .env
+    ```
+  </Step>
+
+  <Step title="Configure environment variables">
+    Open `.env` and configure the following variables:
+
+    ```bash .env
+    # Your app URL (development)
+    NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+    # Database connection string
+    DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
+
+    # Redis URL (optional, for rate limiting)
+    REDIS_URL="redis://localhost:6379"
+
+    # Coolify Specific (if deploying to Coolify)
+    # SOURCE_COMMIT=$SOURCE_COMMIT
+    ```
+
+    <Note>
+      **REDIS_URL** is optional. If not provided, the template will use in-memory rate limiting instead.
+    </Note>
+  </Step>
+
+  <Step title="Set up your database">
+    If you're using Prisma with a database, set up your database schema:
+
+    ```bash
+    npx prisma db push
+    ```
+
+    Or run migrations if you have them:
+
+    ```bash
+    npx prisma migrate dev
+    ```
+  </Step>
+</Steps>
+
+## Verify Installation
+
+Ensure everything is set up correctly by running the development server:
+
+<CodeGroup>
+```bash npm
+npm run dev
+```
+
+```bash yarn
+yarn dev
+```
+
+```bash pnpm
+pnpm dev
+```
+</CodeGroup>
+
+Open [http://localhost:3000](http://localhost:3000) in your browser. You should see the template's landing page.
+
+<Check>
+  If you see the landing page, your installation was successful!
+</Check>
+
+## Optional Setup
+
+### Redis (for Rate Limiting)
+
+For production-grade rate limiting, install and configure Redis:
+
+<Tabs>
+  <Tab title="Docker">
+    ```bash
+    docker run -d -p 6379:6379 redis:alpine
+    ```
+  </Tab>
+
+  <Tab title="Homebrew (macOS)">
+    ```bash
+    brew install redis
+    brew services start redis
+    ```
+  </Tab>
+
+  <Tab title="Linux">
+    ```bash
+    sudo apt-get install redis-server
+    sudo systemctl start redis
+    ```
+  </Tab>
+</Tabs>
+
+Then add your Redis URL to `.env`:
+
+```bash
+REDIS_URL="redis://localhost:6379"
+```
+
+### Database Setup
+
+The template uses Prisma and supports multiple databases:
+
+- PostgreSQL (recommended)
+- MySQL
+- SQLite (for development)
+- MongoDB
+- SQL Server
+
+Update your `DATABASE_URL` in `.env` with your database connection string.
+
+## What's Installed
+
+After installation, your project includes:
+
+### Core Dependencies
+- **next** - Next.js framework (v16+)
+- **react** & **react-dom** - React library
+- **typescript** - TypeScript support
+
+### UI & Styling
+- **tailwindcss** - Utility-first CSS framework
+- **@tailwindcss/postcss** - Tailwind PostCSS integration
+- **lucide-react** - Icon library
+- **class-variance-authority** - CVA for component variants
+- **tailwind-merge** - Merge Tailwind classes intelligently
+
+### API & Data
+- **axios** - HTTP client
+- **@prisma/client** & **prisma** - Database ORM
+- **zod** - Schema validation
+- **ioredis** - Redis client
+
+### Forms & Validation
+- **react-hook-form** - Form management
+- **@hookform/resolvers** - Form validation resolvers
+
+### Animations
+- **lenis** - Smooth scroll
+- **motion** - Animation library (Framer Motion)
+- **nextjs-toploader** - Page loading bar
+
+### UI Components
+- **radix-ui** - Headless UI primitives
+- **sonner** - Toast notifications
+- **vaul** - Drawer component
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Module not found errors">
+    Try deleting `node_modules` and reinstalling:
+
+    ```bash
+    rm -rf node_modules
+    npm install
+    ```
+  </Accordion>
+
+  <Accordion title="Prisma client errors">
+    Regenerate the Prisma client:
+
+    ```bash
+    npx prisma generate
+    ```
+  </Accordion>
+
+  <Accordion title="Port 3000 already in use">
+    Either stop the process using port 3000, or run Next.js on a different port:
+
+    ```bash
+    npm run dev -- -p 3001
+    ```
+  </Accordion>
+
+  <Accordion title="Redis connection failed">
+    Redis is optional. If you don't need it, simply don't set the `REDIS_URL` environment variable. The template will fall back to in-memory rate limiting.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+Now that you have the template installed, you're ready to start building!
+
+<CardGroup cols={2}>
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Learn how to customize the landing page and create your first component
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/guides/configuration">
+    Customize site settings, colors, and more
+  </Card>
+  
+  <Card title="API Client" icon="code" href="/features/api-client">
+    Learn how to make API requests with the custom Axios client
+  </Card>
+  
+  <Card title="Components" icon="square-stack" href="/features/ui-components">
+    Explore the 30+ pre-built UI components
+  </Card>
+</CardGroup>

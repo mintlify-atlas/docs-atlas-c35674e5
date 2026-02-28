@@ -1,0 +1,420 @@
+---
+title: 'API Client'
+description: 'Custom Axios-based API client with automatic authentication'
+icon: 'code'
+---
+
+## Overview
+
+The Kars Template includes a custom API client built on top of Axios that provides a clean, type-safe interface for making HTTP requests. It automatically handles authentication tokens, error responses, and provides a consistent API response format.
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Automatic Auth" icon="lock">
+    Automatically attaches Bearer tokens to requests
+  </Card>
+  <Card title="Type-Safe" icon="shield-check">
+    Full TypeScript support with generic types
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation">
+    Unified error response format
+  </Card>
+  <Card title="Environment-Aware" icon="server">
+    Automatically switches between dev and production URLs
+  </Card>
+</CardGroup>
+
+## API Client Implementation
+
+The API client is located at `src/lib/API/api.ts`:
+
+```tsx src/lib/API/api.ts
+import axios, { AxiosError, AxiosResponse, AxiosRequestConfig } from "axios";
+import getToken from "../auth/get-token";
+
+interface ApiResponse<T = unknown> {
+  status: number;
+  data: T;
+  error?: string;
+}
+
+export default class api {
+  private static baseURL =
+    process.env.NODE_ENV === "development"
+      ? "http://localhost:3000"
+      : process.env.NEXT_PUBLIC_APP_URL;
+      
+  private static instance = axios.create({
+    baseURL: this.baseURL,
+    withCredentials: true,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  private static async getHeaders(): Promise<any> {
+    const token = await getToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    return headers;
+  }
+
+  private static async handleRequest<T>(
+    promise: Promise<AxiosResponse<T>>,
+  ): Promise<ApiResponse<T>> {
+    try {
+      const response = await promise;
+      return {
+        status: response.status,
+        data: response.data,
+      };
+    } catch (error) {
+      const axiosError = error as AxiosError<T>;
+      return {
+        status: axiosError.response?.status || 500,
+        data: axiosError.response?.data as T,
+        error: axiosError.message,
+      };
+    }
+  }
+
+  static async get<T = unknown, P = unknown>(
+    url: string,
+    config?: Omit<AxiosRequestConfig<P>, "url">,
+  ): Promise<ApiResponse<T>> {
+    const headers = await this.getHeaders();
+    return this.handleRequest(
+      this.instance.get<T>(url, { ...config, headers }),
+    );
+  }
+
+  static async post<T = unknown, D = unknown>(
+    url: string,
+    data?: D,
+    config?: Omit<AxiosRequestConfig<D>, "url" | "data">,
+  ): Promise<ApiResponse<T>> {
+    const headers = await this.getHeaders();
+    return this.handleRequest(
+      this.instance.post<T>(url, data, { ...config, headers }),
+    );
+  }
+
+  static async put<T = unknown, D = unknown>(
+    url: string,
+    data?: D,
+    config?: Omit<AxiosRequestConfig<D>, "url" | "data">,
+  ): Promise<ApiResponse<T>> {
+    const headers = await this.getHeaders();
+    return this.handleRequest(
+      this.instance.put<T>(url, data, { ...config, headers }),
+    );
+  }
+
+  static async delete<T = unknown>(
+    url: string,
+    config?: Omit<AxiosRequestConfig, "url">,
+  ): Promise<ApiResponse<T>> {
+    const headers = await this.getHeaders();
+    return this.handleRequest(
+      this.instance.delete<T>(url, { ...config, headers }),
+    );
+  }
+
+  static async patch<T = unknown, D = unknown>(
+    url: string,
+    data?: D,
+    config?: Omit<AxiosRequestConfig<D>, "url" | "data">,
+  ): Promise<ApiResponse<T>> {
+    const headers = await this.getHeaders();
+    return this.handleRequest(
+      this.instance.patch<T>(url, data, { ...config, headers }),
+    );
+  }
+}
+```
+
+## Usage
+
+### Basic GET Request
+
+```tsx
+import api from "@/lib/API/api";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+async function getUser(id: string) {
+  const response = await api.get<User>(`/api/users/${id}`);
+  
+  if (response.error) {
+    console.error("Error:", response.error);
+    return null;
+  }
+  
+  return response.data;
+}
+```
+
+### POST Request with Data
+
+```tsx
+import api from "@/lib/API/api";
+
+interface LoginData {
+  email: string;
+  password: string;
+}
+
+interface LoginResponse {
+  token: string;
+  user: User;
+}
+
+async function login(credentials: LoginData) {
+  const response = await api.post<LoginResponse, LoginData>(
+    "/api/auth/login",
+    credentials
+  );
+  
+  if (response.status === 200) {
+    // Successfully logged in
+    return response.data;
+  } else {
+    throw new Error(response.error || "Login failed");
+  }
+}
+```
+
+### PUT Request
+
+```tsx
+import api from "@/lib/API/api";
+
+interface UpdateUserData {
+  name: string;
+  email: string;
+}
+
+async function updateUser(id: string, data: UpdateUserData) {
+  const response = await api.put<User, UpdateUserData>(
+    `/api/users/${id}`,
+    data
+  );
+  
+  return response;
+}
+```
+
+### DELETE Request
+
+```tsx
+import api from "@/lib/API/api";
+
+async function deleteUser(id: string) {
+  const response = await api.delete(`/api/users/${id}`);
+  
+  if (response.status === 200) {
+    console.log("User deleted successfully");
+  }
+}
+```
+
+### PATCH Request
+
+```tsx
+import api from "@/lib/API/api";
+
+interface PartialUserUpdate {
+  name?: string;
+  avatar?: string;
+}
+
+async function patchUser(id: string, updates: PartialUserUpdate) {
+  const response = await api.patch<User, PartialUserUpdate>(
+    `/api/users/${id}`,
+    updates
+  );
+  
+  return response.data;
+}
+```
+
+## Client-Side Usage Example
+
+Here's a complete example using the API client in a React component:
+
+```tsx app/dashboard/page.tsx
+"use client";
+
+import { useState, useEffect } from "react";
+import api from "@/lib/API/api";
+import { Button } from "@/components/ui/button";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export default function DashboardPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchUser() {
+      const response = await api.get<User>("/api/user/me");
+      
+      if (response.error) {
+        setError(response.error);
+      } else {
+        setUser(response.data);
+      }
+      
+      setLoading(false);
+    }
+    
+    fetchUser();
+  }, []);
+
+  async function handleUpdate() {
+    if (!user) return;
+    
+    const response = await api.put<User>(`/api/users/${user.id}`, {
+      name: "Updated Name",
+    });
+    
+    if (!response.error) {
+      setUser(response.data);
+    }
+  }
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!user) return <div>No user found</div>;
+
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.email}</p>
+      <Button onClick={handleUpdate}>Update Profile</Button>
+    </div>
+  );
+}
+```
+
+## API Response Format
+
+All methods return a consistent `ApiResponse<T>` object:
+
+```typescript
+interface ApiResponse<T = unknown> {
+  status: number;    // HTTP status code
+  data: T;          // Response data (typed)
+  error?: string;   // Error message if request failed
+}
+```
+
+### Checking for Errors
+
+```tsx
+const response = await api.get<User>("/api/user");
+
+// Method 1: Check error property
+if (response.error) {
+  console.error("Request failed:", response.error);
+  return;
+}
+
+// Method 2: Check status code
+if (response.status !== 200) {
+  console.error("Unexpected status:", response.status);
+  return;
+}
+
+// Safe to use response.data
+const user = response.data;
+```
+
+## Configuration
+
+The API client automatically configures the base URL based on environment:
+
+<Tabs>
+  <Tab title="Development">
+    ```typescript
+    baseURL: "http://localhost:3000"
+    ```
+  </Tab>
+  <Tab title="Production">
+    ```typescript
+    baseURL: process.env.NEXT_PUBLIC_APP_URL
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  Make sure to set `NEXT_PUBLIC_APP_URL` in your `.env` file for production deployments.
+</Note>
+
+## Authentication
+
+The API client automatically:
+
+1. Retrieves the authentication token using `getToken()`
+2. Attaches it as a `Bearer` token in the `Authorization` header
+3. Includes credentials in requests (`withCredentials: true`)
+
+See the [Authentication](/features/authentication) documentation for more details on token management.
+
+## Advanced Configuration
+
+You can pass additional Axios configuration to any method:
+
+```tsx
+const response = await api.get<User>("/api/user", {
+  timeout: 5000,
+  params: { include: "profile" },
+  headers: { "X-Custom-Header": "value" },
+});
+```
+
+## Type Safety
+
+The API client uses TypeScript generics for full type safety:
+
+```tsx
+// T = Response type
+// D = Request data type
+api.get<T, P>(url, config?)
+api.post<T, D>(url, data?, config?)
+api.put<T, D>(url, data?, config?)
+api.patch<T, D>(url, data?, config?)
+api.delete<T>(url, config?)
+```
+
+<Warning>
+  The API client catches all errors and returns them in the response object. Always check `response.error` or `response.status` before using `response.data`.
+</Warning>
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/features/authentication">
+    Learn about token management
+  </Card>
+  <Card title="Rate Limiting" icon="gauge" href="/features/rate-limiting">
+    API rate limiting middleware
+  </Card>
+  <Card title="Validation" icon="check" href="/features/validation">
+    Request/response validation
+  </Card>
+</CardGroup>

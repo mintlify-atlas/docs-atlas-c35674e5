@@ -1,0 +1,359 @@
+---
+title: "Validation"
+description: "Request validation utilities and schemas"
+---
+
+Validation utilities provide type-safe request validation using Zod schemas with standardized error handling for API routes.
+
+## Functions
+
+### validateRequestBody()
+
+Validate and parse JSON request body against a Zod schema.
+
+```typescript
+async function validateRequestBody<T>(
+  schema: z.ZodSchema<T>,
+  request: Request
+): Promise<T>
+```
+
+<ParamField path="schema" type="z.ZodSchema<T>" required>
+  Zod schema to validate against
+</ParamField>
+
+<ParamField path="request" type="Request" required>
+  The HTTP request object
+</ParamField>
+
+**Returns:** `Promise<T>` - Parsed and validated data
+
+**Throws:**
+- `z.ZodError` - When validation fails
+- `APIError` - When request body is malformed JSON
+
+**Example:**
+
+```typescript
+import { validateRequestBody } from "@/lib/API/handler";
+import { loginSchema } from "@/lib/validation/schemas";
+
+export async function POST(request: Request) {
+  try {
+    const data = await validateRequestBody(loginSchema, request);
+    // data is typed as { email: string; password: string }
+    return Response.json({ success: true });
+  } catch (error) {
+    return handleAndReturnErrorResponse(error);
+  }
+}
+```
+
+### validateQueryParams()
+
+Validate URL query parameters against a Zod schema.
+
+```typescript
+function validateQueryParams<T>(
+  schema: z.ZodSchema<T>,
+  url: URL
+): T
+```
+
+<ParamField path="schema" type="z.ZodSchema<T>" required>
+  Zod schema to validate against
+</ParamField>
+
+<ParamField path="url" type="URL" required>
+  The URL object containing query parameters
+</ParamField>
+
+**Returns:** `T` - Parsed and validated query parameters
+
+**Throws:**
+- `z.ZodError` - When validation fails
+- `APIError` - When query parameters are invalid
+
+**Example:**
+
+```typescript
+import { validateQueryParams } from "@/lib/API/handler";
+import { paginationSchema } from "@/lib/validation/schemas";
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const params = validateQueryParams(paginationSchema, url);
+  // params is typed as { page: number; limit: number }
+  
+  const results = await fetchData(params.page, params.limit);
+  return Response.json(results);
+}
+```
+
+### validateFormData()
+
+Validate FormData against a Zod schema.
+
+```typescript
+function validateFormData<T>(
+  schema: z.ZodSchema<T>,
+  formData: FormData
+): T
+```
+
+<ParamField path="schema" type="z.ZodSchema<T>" required>
+  Zod schema to validate against
+</ParamField>
+
+<ParamField path="formData" type="FormData" required>
+  The FormData object to validate
+</ParamField>
+
+**Returns:** `T` - Parsed and validated form data
+
+**Throws:**
+- `z.ZodError` - When validation fails
+- `APIError` - When form data is invalid
+
+### validateSchema()
+
+Generic validation function that returns a result object instead of throwing.
+
+```typescript
+function validateSchema<T>(
+  schema: z.ZodSchema<T>,
+  data: unknown
+): ValidationResult<T>
+```
+
+<ParamField path="schema" type="z.ZodSchema<T>" required>
+  Zod schema to validate against
+</ParamField>
+
+<ParamField path="data" type="unknown" required>
+  Data to validate
+</ParamField>
+
+**Returns:** `ValidationResult<T>` - Validation result object
+
+```typescript
+type ValidationResult<T> =
+  | { success: true; data: T }
+  | { success: false; errors: string[] }
+```
+
+**Example:**
+
+```typescript
+import { validateSchema } from "@/lib/validation/validate";
+import { contactFormSchema } from "@/lib/validation/schemas";
+
+const result = validateSchema(contactFormSchema, formData);
+
+if (result.success) {
+  console.log("Valid data:", result.data);
+} else {
+  console.error("Validation errors:", result.errors);
+}
+```
+
+## Validation Schemas
+
+Pre-built Zod schemas for common validation patterns.
+
+### loginSchema
+
+Validates login credentials.
+
+```typescript
+const loginSchema = z.object({
+  email: z.email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type LoginInput = z.infer<typeof loginSchema>;
+```
+
+<ParamField path="email" type="string" required>
+  Valid email address
+</ParamField>
+
+<ParamField path="password" type="string" required>
+  Non-empty password string
+</ParamField>
+
+### contactFormSchema
+
+Validates contact form submissions.
+
+```typescript
+const contactFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.email("Invalid email address"),
+  message: z.string().min(10, "Message must be at least 10 characters"),
+});
+
+type ContactFormInput = z.infer<typeof contactFormSchema>;
+```
+
+<ParamField path="name" type="string" required>
+  Name with minimum 2 characters
+</ParamField>
+
+<ParamField path="email" type="string" required>
+  Valid email address
+</ParamField>
+
+<ParamField path="message" type="string" required>
+  Message with minimum 10 characters
+</ParamField>
+
+### deleteSchema
+
+Validates delete requests by email.
+
+```typescript
+const deleteSchema = z.object({
+  email: z.email("Invalid email address"),
+});
+
+type DeleteInput = z.infer<typeof deleteSchema>;
+```
+
+<ParamField path="email" type="string" required>
+  Valid email address of account to delete
+</ParamField>
+
+### paginationSchema
+
+Validates pagination parameters with defaults.
+
+```typescript
+const paginationSchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(10),
+});
+
+type PaginationInput = z.infer<typeof paginationSchema>;
+```
+
+<ParamField path="page" type="number" default="1">
+  Page number (minimum 1)
+</ParamField>
+
+<ParamField path="limit" type="number" default="10">
+  Items per page (1-100)
+</ParamField>
+
+### userSchema
+
+Validates user registration data.
+
+```typescript
+const userSchema = z.object({
+  email: z.email("Invalid email address"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+type User = z.infer<typeof userSchema>;
+```
+
+<ParamField path="email" type="string" required>
+  Valid email address
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Name with minimum 2 characters
+</ParamField>
+
+<ParamField path="password" type="string" required>
+  Password with minimum 8 characters
+</ParamField>
+
+### registerSchema
+
+Extends userSchema with password confirmation.
+
+```typescript
+const registerSchema = userSchema
+  .extend({
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
+
+type RegisterInput = z.infer<typeof registerSchema>;
+```
+
+<ParamField path="email" type="string" required>
+  Valid email address
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Name with minimum 2 characters
+</ParamField>
+
+<ParamField path="password" type="string" required>
+  Password with minimum 8 characters
+</ParamField>
+
+<ParamField path="confirmPassword" type="string" required>
+  Must match password field
+</ParamField>
+
+## Error Handling
+
+Validation errors are automatically formatted with field-level detail:
+
+```typescript
+// Error response format
+{
+  success: false,
+  message: "Validation failed",
+  details: [
+    {
+      field: "email",
+      message: "Invalid email address",
+      code: "invalid_string"
+    }
+  ]
+}
+```
+
+## Middleware Integration
+
+### withValidation()
+
+Wrapper for route handlers with automatic validation.
+
+```typescript
+function withValidation<T>(
+  schema: z.ZodSchema<T>,
+  handler: (data: T, request: NextRequest) => Promise<NextResponse>
+): (request: NextRequest) => Promise<NextResponse>
+```
+
+**Example:**
+
+```typescript
+import { withValidation } from "@/lib/API/handler";
+import { contactFormSchema } from "@/lib/validation/schemas";
+
+export const POST = withValidation(
+  contactFormSchema,
+  async (data, request) => {
+    // data is automatically validated and typed
+    await sendEmail(data);
+    return successResponse({ message: "Message sent" });
+  }
+);
+```
+
+## Source Locations
+
+- Request validators: `src/lib/API/handler.ts:212`
+- Schema validator: `src/lib/validation/validate.ts:13`
+- Validation schemas: `src/lib/validation/schemas.ts`

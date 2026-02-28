@@ -1,0 +1,514 @@
+---
+title: Customizing the Template
+description: Learn how to customize colors, fonts, pages, components, and metadata in the Kars Next.js template
+---
+
+The Kars Next.js template is built to be highly customizable. This guide covers how to personalize your site's appearance, functionality, and content.
+
+## Color Customization
+
+### Accent Color
+
+The primary accent color is set in `src/constants/site.ts:29`:
+
+```typescript
+export const website: Website = {
+  name: "kars",
+  url: APP_URL!,
+  accentColor: "#ff6666", // Change this to your brand color
+  baseUrl: "https://kars.bio",
+  enableLenis: false,
+}
+```
+
+This color is automatically applied to:
+- Browser theme color (see `src/app/layout.tsx:23`)
+- Viewport theme
+
+### Theme Colors (CSS Variables)
+
+The template uses CSS variables for theming, defined in `src/app/globals.css:49-98`:
+
+```css
+:root {
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.985 0 0);
+
+  --card: oklch(0.21 0.006 285.885);
+  --card-foreground: oklch(0.985 0 0);
+
+  --primary: oklch(0.92 0.004 286.32);
+  --primary-foreground: oklch(0.21 0.006 285.885);
+
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+
+  /* ... more color variables */
+}
+```
+
+#### Customizing Color Variables
+
+Edit the OKLCH color values to match your brand:
+
+```css
+:root {
+  /* Dark purple background */
+  --background: oklch(0.15 0.02 290);
+  
+  /* Bright accent */
+  --primary: oklch(0.75 0.2 270);
+  
+  /* Muted secondary */
+  --secondary: oklch(0.35 0.05 280);
+}
+```
+
+<Note>
+  The template uses OKLCH color space for better color perception. Use tools like [OKLCH Color Picker](https://oklch.com/) to generate values.
+</Note>
+
+### Tailwind Color Classes
+
+Colors are available as Tailwind classes throughout your app:
+
+```tsx
+<div className="bg-background text-foreground">
+  <h1 className="text-primary">Heading</h1>
+  <p className="text-muted-foreground">Description</p>
+  <button className="bg-primary text-primary-foreground">
+    Click me
+  </button>
+</div>
+```
+
+## Font Customization
+
+### Available Fonts
+
+The template includes 8 pre-loaded fonts (see `public/fonts/fontExports.ts:10-56`):
+
+```typescript
+// Variable fonts
+export const Satoshi = localFont({ src: "./Satoshi.ttf", weight: "300 900" })
+export const GeistVF = localFont({ src: "./GeistVF.woff", weight: "100 900" })
+export const GeistMonoVF = localFont({ src: "./GeistMonoVF.woff", weight: "300 900" })
+export const GeneralSans = localFont({ src: "./GeneralSans.ttf", weight: "200 700" })
+export const Raleway = localFont({ src: "./Raleway.ttf", weight: "100 900" })
+export const Neon = localFont({ src: "./Neon.ttf", weight: "200 800" })
+export const Argon = localFont({ src: "./Argon.ttf", weight: "200 800" })
+export const Walsheim = localFont({ src: "./Walsheim.woff2", weight: "200 800" })
+```
+
+### Changing the Default Font
+
+The default font is Satoshi, set in `src/app/layout.tsx:35`:
+
+```typescript
+import * as Fonts from "../../public/fonts/fontExports";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <RootProvider className={`${Fonts.Satoshi.className} dark __kars`}>
+        {children}
+      </RootProvider>
+    </html>
+  )
+}
+```
+
+To use a different font:
+
+```typescript
+<RootProvider className={`${Fonts.GeistVF.className} dark __kars`}>
+```
+
+### Adding Custom Fonts
+
+<Steps>
+  <Step title="Add font file">
+    Place your font file in `public/fonts/`:
+    ```
+    public/fonts/MyCustomFont.ttf
+    ```
+  </Step>
+  
+  <Step title="Export the font">
+    Add to `public/fonts/fontExports.ts`:
+    
+    ```typescript
+    export const MyCustomFont = localFont({
+      src: "./MyCustomFont.ttf",
+      variable: "--font-custom",
+      weight: "400 700",
+    })
+    ```
+  </Step>
+  
+  <Step title="Apply the font">
+    Use in your layout or components:
+    
+    ```typescript
+    import { MyCustomFont } from "../../public/fonts/fontExports"
+    
+    <div className={MyCustomFont.className}>
+      Content with custom font
+    </div>
+    ```
+  </Step>
+</Steps>
+
+### Font Variables in CSS
+
+You can also use fonts via CSS variables:
+
+```tsx
+// In your component
+<p className="font-[family-name:var(--font-geist)]">
+  Text in Geist
+</p>
+```
+
+## Adding New Pages
+
+### Creating a New Page
+
+Next.js uses file-based routing. Create pages in the `src/app/` directory:
+
+<Steps>
+  <Step title="Create the page file">
+    ```bash
+    # Create a new page
+    src/app/about/page.tsx
+    ```
+  </Step>
+  
+  <Step title="Add page content">
+    ```tsx
+    // src/app/about/page.tsx
+    import { constructMetadata } from "@/lib/custom/meta"
+    
+    export const metadata = constructMetadata({
+      title: "About",
+      description: "Learn more about us",
+    })
+    
+    export default function AboutPage() {
+      return (
+        <div className="container mx-auto py-12">
+          <h1 className="text-4xl font-bold">About Us</h1>
+          <p className="mt-4 text-muted-foreground">
+            Welcome to our about page!
+          </p>
+        </div>
+      )
+    }
+    ```
+  </Step>
+  
+  <Step title="Access your page">
+    The page is now available at `/about`.
+  </Step>
+</Steps>
+
+### Dynamic Routes
+
+Create dynamic pages with brackets:
+
+```bash
+# Dynamic user profile
+src/app/users/[id]/page.tsx
+```
+
+```tsx
+// src/app/users/[id]/page.tsx
+export default function UserPage({ params }: { params: { id: string } }) {
+  return (
+    <div>
+      <h1>User Profile: {params.id}</h1>
+    </div>
+  )
+}
+```
+
+Access at `/users/123`, `/users/456`, etc.
+
+### Nested Layouts
+
+Create custom layouts for sections:
+
+```tsx
+// src/app/dashboard/layout.tsx
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex">
+      <aside className="w-64 bg-card">
+        {/* Sidebar */}
+      </aside>
+      <main className="flex-1">
+        {children}
+      </main>
+    </div>
+  )
+}
+```
+
+## Modifying UI Components
+
+### ShadCN Components
+
+The template uses [ShadCN UI](https://ui.shadcn.com) components. Components are typically in `src/components/ui/`.
+
+#### Customizing a Component
+
+Example: Modify the button component:
+
+```tsx
+// src/components/ui/button.tsx
+import { cva } from "class-variance-authority"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center rounded-md text-sm font-medium",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-destructive-foreground",
+        outline: "border border-input bg-transparent",
+        // Add custom variant
+        gradient: "bg-gradient-to-r from-primary to-secondary text-white",
+      },
+    },
+  }
+)
+```
+
+Use your custom variant:
+
+```tsx
+<Button variant="gradient">Click me</Button>
+```
+
+#### Adding New Components
+
+Use the ShadCN CLI to add components:
+
+```bash
+npx shadcn@latest add dialog
+npx shadcn@latest add dropdown-menu
+npx shadcn@latest add tooltip
+```
+
+### Custom Components
+
+Create reusable components:
+
+```tsx
+// src/components/custom/feature-card.tsx
+interface FeatureCardProps {
+  title: string
+  description: string
+  icon: React.ReactNode
+}
+
+export function FeatureCard({ title, description, icon }: FeatureCardProps) {
+  return (
+    <div className="rounded-lg border bg-card p-6">
+      <div className="mb-4 text-primary">{icon}</div>
+      <h3 className="mb-2 text-xl font-semibold">{title}</h3>
+      <p className="text-muted-foreground">{description}</p>
+    </div>
+  )
+}
+```
+
+Use in your pages:
+
+```tsx
+import { FeatureCard } from "@/components/custom/feature-card"
+import { Zap } from "lucide-react"
+
+<FeatureCard
+  title="Fast Performance"
+  description="Built with Next.js 16"
+  icon={<Zap />}
+/>
+```
+
+## Customizing Metadata
+
+### Site Metadata
+
+The template uses `constructMetadata` helper (see `src/lib/custom/meta/index.ts:6-101`):
+
+```typescript
+export const metadata = constructMetadata({
+  title: "Home",
+  description: "Welcome to my site",
+  image: "https://example.com/og-image.png",
+  url: "https://example.com",
+})
+```
+
+### Per-Page Metadata
+
+```tsx
+// src/app/blog/page.tsx
+import { constructMetadata } from "@/lib/custom/meta"
+
+export const metadata = constructMetadata({
+  title: "Blog",
+  description: "Read our latest posts",
+  url: "https://example.com/blog",
+})
+```
+
+### Dynamic Metadata
+
+For dynamic pages:
+
+```tsx
+// src/app/blog/[slug]/page.tsx
+import { constructMetadata } from "@/lib/custom/meta"
+
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const post = await getPost(params.slug)
+  
+  return constructMetadata({
+    title: post.title,
+    description: post.excerpt,
+    image: post.coverImage,
+    url: `https://example.com/blog/${params.slug}`,
+  })
+}
+```
+
+### Open Graph & Twitter Cards
+
+The `constructMetadata` function automatically generates Open Graph and Twitter card metadata (see `src/lib/custom/meta/index.ts:51-75`).
+
+## Animations & Effects
+
+### Lenis Smooth Scrolling
+
+Enable smooth scrolling in `src/constants/site.ts:31`:
+
+```typescript
+export const website: Website = {
+  // ... other config
+  enableLenis: true, // Enable smooth scroll
+}
+```
+
+### Custom Animations
+
+The template includes `tw-animate-css` for animations:
+
+```tsx
+<div className="animate-fade-in">
+  Fades in on load
+</div>
+
+<div className="animate-slide-up">
+  Slides up on load
+</div>
+```
+
+### Framer Motion
+
+The template uses `motion` (Framer Motion). Add animations:
+
+```tsx
+import { motion } from "motion/react"
+
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.5 }}
+>
+  Animated content
+</motion.div>
+```
+
+## Styling Best Practices
+
+<Steps>
+  <Step title="Use design tokens">
+    Always use CSS variables for colors:
+    ```tsx
+    <div className="bg-background text-foreground"> // ✅ Good
+    <div className="bg-gray-900 text-white">      // ❌ Avoid
+    ```
+  </Step>
+  
+  <Step title="Follow mobile-first approach">
+    ```tsx
+    <div className="text-sm md:text-base lg:text-lg">
+      Responsive text
+    </div>
+    ```
+  </Step>
+  
+  <Step title="Use semantic HTML">
+    ```tsx
+    <article className="...">
+      <header>
+        <h1>Title</h1>
+      </header>
+      <section>Content</section>
+    </article>
+    ```
+  </Step>
+  
+  <Step title="Keep components small">
+    Break large components into smaller, reusable pieces for better maintainability.
+  </Step>
+</Steps>
+
+## Advanced Customization
+
+### Custom Scrollbar
+
+The template includes custom scrollbar styles (see `src/app/globals.css:131-136`):
+
+```css
+::-webkit-scrollbar {
+  @apply w-2 bg-[#0c0d0d];
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded bg-[#0d1117];
+}
+```
+
+Customize these values to match your theme.
+
+### Selection Color
+
+Customize text selection color (see `src/app/globals.css:125-130`):
+
+```css
+::selection {
+  @apply bg-[#e2bec13d]; /* Change this color */
+}
+```
+
+### Border Radius
+
+Adjust global border radius (see `src/app/globals.css:82`):
+
+```css
+:root {
+  --radius: 0.625rem; /* ~10px - change to your preference */
+}
+```
+
+This affects all components using the `--radius` variable.
+
+<Note>
+  After making CSS changes, restart your development server to ensure all changes are applied correctly.
+</Note>

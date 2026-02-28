@@ -1,0 +1,546 @@
+---
+title: 'Validation'
+description: 'Type-safe request validation with Zod schemas'
+icon: 'check'
+---
+
+## Overview
+
+The Kars Template uses [Zod](https://zod.dev/) for runtime type validation, providing type-safe validation for API requests, forms, and data structures. All validation schemas and utilities are centralized for easy reuse.
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Type-Safe" icon="shield-check">
+    Automatic TypeScript type inference from schemas
+  </Card>
+  <Card title="Reusable Schemas" icon="recycle">
+    Centralized validation schemas
+  </Card>
+  <Card title="Helper Functions" icon="wand-magic-sparkles">
+    validateRequestBody, validateQueryParams, validateFormData
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation">
+    Automatic error formatting and responses
+  </Card>
+</CardGroup>
+
+## Validation Schemas
+
+All validation schemas are defined in `src/lib/validation/schemas.ts`:
+
+```tsx src/lib/validation/schemas.ts
+import { z } from "zod";
+
+// User validation
+export const userSchema = z.object({
+  email: z.email("Invalid email address"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+// Login validation
+export const loginSchema = z.object({
+  email: z.email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+// Delete validation
+export const deleteSchema = z.object({
+  email: z.email("Invalid email address"),
+});
+
+// Registration with password confirmation
+export const registerSchema = userSchema
+  .extend({
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
+
+// Pagination
+export const paginationSchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(10),
+});
+
+// Contact form
+export const contactFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.email("Invalid email address"),
+  message: z.string().min(10, "Message must be at least 10 characters"),
+});
+
+// TypeScript types inferred from schemas
+export type User = z.infer<typeof userSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
+export type DeleteInput = z.infer<typeof deleteSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
+export type PaginationInput = z.infer<typeof paginationSchema>;
+export type ContactFormInput = z.infer<typeof contactFormSchema>;
+```
+
+## Validation Helpers
+
+The template provides helper functions for common validation scenarios:
+
+### validateRequestBody
+
+Validate JSON request bodies:
+
+```tsx src/lib/API/handler.ts
+export async function validateRequestBody<T>(
+  schema: z.ZodSchema<T>,
+  request: Request,
+): Promise<T> {
+  try {
+    const body = await request.json();
+    return schema.parse(body);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw error;
+    }
+    throw new APIError({
+      code: ErrorCode.BAD_REQUEST,
+      message: "Invalid request body",
+    });
+  }
+}
+```
+
+### validateQueryParams
+
+Validate URL query parameters:
+
+```tsx src/lib/API/handler.ts
+export function validateQueryParams<T>(
+  schema: z.ZodSchema<T>, 
+  url: URL
+): T {
+  try {
+    const params = Object.fromEntries(url.searchParams.entries());
+    return schema.parse(params);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw error;
+    }
+    throw new APIError({
+      code: ErrorCode.BAD_REQUEST,
+      message: "Invalid query parameters",
+    });
+  }
+}
+```
+
+### validateFormData
+
+Validate form data submissions:
+
+```tsx src/lib/API/handler.ts
+export function validateFormData<T>(
+  schema: z.ZodSchema<T>,
+  formData: FormData,
+): T {
+  try {
+    const data = Object.fromEntries(formData.entries());
+    return schema.parse(data);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw error;
+    }
+    throw new APIError({
+      code: ErrorCode.BAD_REQUEST,
+      message: "Invalid form data",
+    });
+  }
+}
+```
+
+## Usage in API Routes
+
+### Validating Request Body
+
+```tsx app/api/contact/route.ts
+import { validateRequestBody } from "@/lib/API/handler";
+import { withRateLimit } from "@/lib/API/middleware";
+import { contactFormSchema } from "@/lib/validation/schemas";
+import { successResponse, handleAndReturnErrorResponse } from "@/lib/API/handler";
+import type { NextRequest } from "next/server";
+
+export const POST = withRateLimit(async (req: NextRequest) => {
+  try {
+    // Validate request body against schema
+    const validatedData = await validateRequestBody(contactFormSchema, req);
+    
+    // validatedData is now typed as ContactFormInput
+    // { name: string, email: string, message: string }
+    
+    // Process the validated data
+    await sendContactEmail(validatedData);
+
+    return successResponse({
+      message: "Contact form submitted successfully",
+      data: validatedData,
+    });
+  } catch (error) {
+    return handleAndReturnErrorResponse(error);
+  }
+});
+```
+
+### Validating Query Parameters
+
+```tsx app/api/users/route.ts
+import { validateQueryParams } from "@/lib/API/handler";
+import { paginationSchema } from "@/lib/validation/schemas";
+import { successResponse, handleAndReturnErrorResponse } from "@/lib/API/handler";
+import type { NextRequest } from "next/server";
+
+export async function GET(req: NextRequest) {
+  try {
+    // Validate query params: ?page=1&limit=10
+    const params = validateQueryParams(paginationSchema, req.nextUrl);
+    
+    // params is now typed as PaginationInput
+    // { page: number, limit: number }
+    
+    const users = await fetchUsers(params.page, params.limit);
+    
+    return successResponse({
+      message: "Users fetched",
+      data: users,
+    });
+  } catch (error) {
+    return handleAndReturnErrorResponse(error);
+  }
+}
+```
+
+### Real Example from Template
+
+<CodeGroup>
+```tsx POST - Request Body Validation
+import { validateRequestBody } from "@/lib/API/handler";
+import { contactFormSchema } from "@/lib/validation/schemas";
+
+export const POST = withRateLimit(async (req: NextRequest) => {
+  try {
+    const validatedData = await validateRequestBody(contactFormSchema, req);
+
+    return successResponse({
+      message: "Contact form submitted successfully",
+      status: 200,
+      data: validatedData,
+    });
+  } catch (error) {
+    return handleAndReturnErrorResponse(error);
+  }
+});
+```
+
+```tsx PUT - Login Validation
+import { validateRequestBody } from "@/lib/API/handler";
+import { loginSchema } from "@/lib/validation/schemas";
+
+export const PUT = withRateLimit(async (req: NextRequest) => {
+  try {
+    const loginData = await validateRequestBody(loginSchema, req);
+
+    if (
+      loginData.email === "test@kars.bio" &&
+      loginData.password === "password123"
+    ) {
+      return successResponse({
+        message: "Login successful!",
+        status: 200,
+        data: { user: { email: loginData.email } },
+      });
+    } else {
+      throw new APIError({
+        code: "unauthorized",
+        message: "Invalid username or password",
+      });
+    }
+  } catch (error) {
+    return handleAndReturnErrorResponse(error);
+  }
+});
+```
+
+```tsx DELETE - Query Params Validation
+import { validateQueryParams } from "@/lib/API/handler";
+import { deleteSchema } from "@/lib/validation/schemas";
+
+export const DELETE = withRateLimit(async (req: NextRequest) => {
+  try {
+    const loginData = await validateQueryParams(deleteSchema, req.nextUrl);
+
+    if (loginData.email === "del@kars.bio") {
+      return successResponse({
+        message: "Account Deleted",
+        status: 200,
+        data: { user: { email: loginData.email } },
+      });
+    } else {
+      throw new APIError({
+        code: "unauthorized",
+        message: "Invalid email",
+      });
+    }
+  } catch (error) {
+    return handleAndReturnErrorResponse(error);
+  }
+});
+```
+</CodeGroup>
+
+## Creating Custom Schemas
+
+### Basic Schema
+
+```tsx
+import { z } from "zod";
+
+export const productSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  price: z.number().positive("Price must be positive"),
+  description: z.string().optional(),
+  inStock: z.boolean().default(true),
+});
+
+export type Product = z.infer<typeof productSchema>;
+```
+
+### Advanced Schema with Refinements
+
+```tsx
+import { z } from "zod";
+
+export const orderSchema = z.object({
+  items: z.array(z.object({
+    productId: z.string().uuid(),
+    quantity: z.number().int().min(1),
+  })).min(1, "Order must contain at least one item"),
+  total: z.number().positive(),
+  shippingAddress: z.object({
+    street: z.string(),
+    city: z.string(),
+    zipCode: z.string().regex(/^\d{5}$/, "Invalid zip code"),
+  }),
+}).refine(
+  (data) => {
+    // Custom validation: total must match items
+    const calculatedTotal = data.items.reduce(
+      (sum, item) => sum + item.quantity * getProductPrice(item.productId),
+      0
+    );
+    return Math.abs(calculatedTotal - data.total) < 0.01;
+  },
+  {
+    message: "Total doesn't match items",
+    path: ["total"],
+  }
+);
+```
+
+### Schema Composition
+
+```tsx
+import { z } from "zod";
+
+// Base schemas
+const addressSchema = z.object({
+  street: z.string(),
+  city: z.string(),
+  country: z.string(),
+});
+
+const timestampSchema = z.object({
+  createdAt: z.date().default(() => new Date()),
+  updatedAt: z.date().default(() => new Date()),
+});
+
+// Compose schemas
+export const userProfileSchema = z.object({
+  name: z.string(),
+  email: z.email(),
+  address: addressSchema,
+}).merge(timestampSchema);
+```
+
+## Form Validation
+
+Use schemas with React Hook Form for client-side validation:
+
+```tsx components/contact-form.tsx
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { contactFormSchema, type ContactFormInput } from "@/lib/validation/schemas";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
+export function ContactForm() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ContactFormInput>({
+    resolver: zodResolver(contactFormSchema),
+  });
+
+  async function onSubmit(data: ContactFormInput) {
+    const response = await fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    
+    if (response.ok) {
+      alert("Form submitted!");
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Input 
+        {...register("name")} 
+        placeholder="Name"
+        aria-invalid={!!errors.name}
+      />
+      {errors.name && <p className="text-red-500">{errors.name.message}</p>}
+      
+      <Input 
+        {...register("email")} 
+        type="email"
+        placeholder="Email"
+        aria-invalid={!!errors.email}
+      />
+      {errors.email && <p className="text-red-500">{errors.email.message}</p>}
+      
+      <Textarea 
+        {...register("message")} 
+        placeholder="Message"
+        aria-invalid={!!errors.message}
+      />
+      {errors.message && <p className="text-red-500">{errors.message.message}</p>}
+      
+      <Button type="submit">Submit</Button>
+    </form>
+  );
+}
+```
+
+## Error Response Format
+
+When validation fails, the API returns a structured error response:
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "details": [
+    {
+      "field": "email",
+      "message": "Invalid email address",
+      "code": "invalid_string"
+    },
+    {
+      "field": "password",
+      "message": "Password must be at least 8 characters",
+      "code": "too_small"
+    }
+  ]
+}
+```
+
+HTTP Status: `422 Unprocessable Entity`
+
+## Common Zod Patterns
+
+<Tabs>
+  <Tab title="String Validation">
+    ```typescript
+    z.string()                                // Any string
+    z.string().min(3)                        // Min length
+    z.string().max(100)                      // Max length
+    z.string().email()                       // Email format
+    z.string().url()                         // URL format
+    z.string().uuid()                        // UUID format
+    z.string().regex(/^[A-Z]+$/)            // Custom regex
+    z.string().trim()                        // Trim whitespace
+    z.string().toLowerCase()                 // Convert to lowercase
+    ```
+  </Tab>
+  <Tab title="Number Validation">
+    ```typescript
+    z.number()                               // Any number
+    z.number().int()                         // Integer only
+    z.number().positive()                    // Positive only
+    z.number().min(0)                        // Minimum value
+    z.number().max(100)                      // Maximum value
+    z.coerce.number()                        // Convert string to number
+    ```
+  </Tab>
+  <Tab title="Date Validation">
+    ```typescript
+    z.date()                                 // Date object
+    z.string().datetime()                    // ISO datetime string
+    z.date().min(new Date("2024-01-01"))   // After date
+    z.date().max(new Date("2024-12-31"))   // Before date
+    ```
+  </Tab>
+  <Tab title="Array Validation">
+    ```typescript
+    z.array(z.string())                      // Array of strings
+    z.array(z.number()).min(1)              // Non-empty array
+    z.array(z.object({...}))                // Array of objects
+    z.array(z.string()).max(10)             // Max 10 items
+    ```
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Centralize Schemas">
+    Keep all validation schemas in `src/lib/validation/schemas.ts` for reusability across API routes and forms.
+  </Accordion>
+  
+  <Accordion title="Use Type Inference">
+    Always use `z.infer<typeof schema>` to generate TypeScript types from your schemas.
+  </Accordion>
+  
+  <Accordion title="Provide Clear Error Messages">
+    Use custom error messages in your schemas to help users understand validation failures.
+  </Accordion>
+  
+  <Accordion title="Validate Early">
+    Validate data as early as possible - in forms on the client and at API entry points on the server.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  Zod schemas provide runtime validation AND compile-time type safety, eliminating the need to maintain separate TypeScript types.
+</Note>
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="API Client" icon="code" href="/features/api-client">
+    Making type-safe API requests
+  </Card>
+  <Card title="Authentication" icon="lock" href="/features/authentication">
+    Validating auth credentials
+  </Card>
+  <Card title="Rate Limiting" icon="gauge" href="/features/rate-limiting">
+    Protecting validated endpoints
+  </Card>
+  <Card title="Zod Documentation" icon="book" href="https://zod.dev/">
+    Official Zod documentation
+  </Card>
+</CardGroup>

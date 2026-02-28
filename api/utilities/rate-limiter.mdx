@@ -1,0 +1,343 @@
+---
+title: "Rate Limiter"
+description: "Rate limiting utilities for API protection"
+---
+
+Rate limiting utilities provide protection against API abuse with support for both in-memory and Redis-backed storage.
+
+## createRateLimiter()
+
+Factory function to create a rate limiter instance.
+
+```typescript
+function createRateLimiter(
+  type: "memory" | "redis",
+  options: RateLimiterOptions,
+  redisClient?: Redis
+): RateLimiter
+```
+
+<ParamField path="type" type="'memory' | 'redis'" required>
+  Storage type for rate limit tracking
+</ParamField>
+
+<ParamField path="options" type="RateLimiterOptions" required>
+  Configuration options for the rate limiter
+</ParamField>
+
+<ParamField path="redisClient" type="Redis">
+  Redis client instance (required when `type` is `"redis"`)
+</ParamField>
+
+**Returns:** `RateLimiter` - Rate limiter instance
+
+**Throws:** Error if `type` is `"redis"` but no `redisClient` is provided
+
+**Example:**
+
+```typescript
+import { createRateLimiter } from "@/lib/API/rate-limiter";
+import { Redis } from "ioredis";
+
+// In-memory rate limiter
+const memoryLimiter = createRateLimiter("memory", {
+  windowMs: 60000, // 1 minute
+  maxRequests: 100,
+  keyPrefix: "rl:",
+});
+
+// Redis-backed rate limiter
+const redis = new Redis(process.env.REDIS_URL);
+const redisLimiter = createRateLimiter(
+  "redis",
+  {
+    windowMs: 60000,
+    maxRequests: 100,
+    keyPrefix: "rl:",
+  },
+  redis
+);
+```
+
+## RateLimiterOptions
+
+Configuration interface for rate limiters.
+
+```typescript
+interface RateLimiterOptions {
+  windowMs: number;
+  maxRequests: number;
+  keyPrefix?: string;
+}
+```
+
+<ParamField path="windowMs" type="number" required>
+  Time window in milliseconds for rate limiting
+</ParamField>
+
+<ParamField path="maxRequests" type="number" required>
+  Maximum number of requests allowed within the time window
+</ParamField>
+
+<ParamField path="keyPrefix" type="string">
+  Optional prefix for storage keys (useful for namespacing)
+</ParamField>
+
+## RateLimiterResponse
+
+Response object returned by rate limit checks.
+
+```typescript
+interface RateLimiterResponse {
+  success: boolean;
+  remaining: number;
+  resetTime: number;
+}
+```
+
+<ResponseField name="success" type="boolean" required>
+  Whether the request is allowed (`true`) or rate limited (`false`)
+</ResponseField>
+
+<ResponseField name="remaining" type="number" required>
+  Number of requests remaining in the current window
+</ResponseField>
+
+<ResponseField name="resetTime" type="number" required>
+  Unix timestamp (ms) when the rate limit window resets
+</ResponseField>
+
+## RateLimiter Interface
+
+Base interface implemented by all rate limiters.
+
+```typescript
+interface RateLimiter {
+  checkRateLimit(key: string): Promise<RateLimiterResponse>;
+}
+```
+
+### checkRateLimit()
+
+Check if a request should be allowed based on rate limits.
+
+<ParamField path="key" type="string" required>
+  Unique identifier for the client (e.g., IP address, user ID)
+</ParamField>
+
+**Returns:** `Promise<RateLimiterResponse>` - Rate limit status
+
+## InMemoryRateLimiter
+
+In-memory implementation of rate limiting (suitable for single-instance deployments).
+
+```typescript
+class InMemoryRateLimiter implements RateLimiter {
+  constructor(options: RateLimiterOptions);
+  async checkRateLimit(key: string): Promise<RateLimiterResponse>;
+}
+```
+
+**Features:**
+- Fast performance with no external dependencies
+- Automatic cleanup of expired windows
+- Perfect for development and single-server deployments
+
+**Limitations:**
+- Rate limits are not shared across multiple server instances
+- Data is lost on server restart
+
+**Example:**
+
+```typescript
+import { InMemoryRateLimiter } from "@/lib/API/rate-limiter";
+
+const limiter = new InMemoryRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 100,
+  keyPrefix: "api:",
+});
+
+const clientIp = "192.168.1.1";
+const result = await limiter.checkRateLimit(clientIp);
+
+if (!result.success) {
+  console.log(`Rate limited. Reset at: ${new Date(result.resetTime)}`);
+}
+```
+
+## RedisRateLimiter
+
+Redis-backed implementation for distributed rate limiting.
+
+```typescript
+class RedisRateLimiter implements RateLimiter {
+  constructor(redisClient: Redis, options: RateLimiterOptions);
+  async checkRateLimit(key: string): Promise<RateLimiterResponse>;
+}
+```
+
+<ParamField path="redisClient" type="Redis" required>
+  ioredis client instance
+</ParamField>
+
+<ParamField path="options" type="RateLimiterOptions" required>
+  Rate limiter configuration
+</ParamField>
+
+**Features:**
+- Shared rate limits across multiple server instances
+- Persistent across server restarts
+- Uses Redis sorted sets for efficient sliding window implementation
+- Automatic key expiration
+
+**Example:**
+
+```typescript
+import { RedisRateLimiter } from "@/lib/API/rate-limiter";
+import { Redis } from "ioredis";
+
+const redis = new Redis({
+  host: process.env.REDIS_HOST,
+  port: parseInt(process.env.REDIS_PORT),
+});
+
+const limiter = new RedisRateLimiter(redis, {
+  windowMs: 60000, // 1 minute
+  maxRequests: 60, // 60 requests per minute
+  keyPrefix: "rl:api:",
+});
+
+const userId = "user_123";
+const result = await limiter.checkRateLimit(userId);
+
+console.log(`Remaining requests: ${result.remaining}`);
+```
+
+## Middleware Integration
+
+### withRateLimit()
+
+Middleware wrapper for Next.js API routes.
+
+```typescript
+import { withRateLimit } from "@/lib/API/middleware";
+import { NextRequest, NextResponse } from "next/server";
+
+export const POST = withRateLimit(
+  async (req: NextRequest) => {
+    return NextResponse.json({ success: true });
+  },
+  {
+    options: {
+      windowMs: 60000,
+      maxRequests: 10,
+    },
+  }
+);
+```
+
+The middleware automatically:
+- Extracts client identifier from request
+- Checks rate limit before executing handler
+- Returns 429 status when limit exceeded
+- Adds rate limit headers to response
+
+## Response Headers
+
+Rate limit information is included in HTTP headers:
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1672531200000
+```
+
+<ResponseField name="X-RateLimit-Limit" type="string">
+  Maximum requests allowed in the window
+</ResponseField>
+
+<ResponseField name="X-RateLimit-Remaining" type="string">
+  Number of requests remaining
+</ResponseField>
+
+<ResponseField name="X-RateLimit-Reset" type="string">
+  Unix timestamp (ms) when the limit resets
+</ResponseField>
+
+## Error Response
+
+When rate limit is exceeded (429 status):
+
+```json
+{
+  "success": false,
+  "message": "Rate limit exceeded. Please try again later."
+}
+```
+
+## Best Practices
+
+### Development vs Production
+
+```typescript
+const limiter = createRateLimiter(
+  process.env.NODE_ENV === "production" ? "redis" : "memory",
+  {
+    windowMs: 60000,
+    maxRequests: process.env.NODE_ENV === "production" ? 100 : 1000,
+  },
+  process.env.NODE_ENV === "production" ? redisClient : undefined
+);
+```
+
+### Per-Endpoint Limits
+
+```typescript
+// Strict limits for auth endpoints
+const authLimiter = createRateLimiter("redis", {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 5,
+  keyPrefix: "rl:auth:",
+}, redis);
+
+// Generous limits for read operations
+const readLimiter = createRateLimiter("redis", {
+  windowMs: 60 * 1000, // 1 minute
+  maxRequests: 100,
+  keyPrefix: "rl:read:",
+}, redis);
+```
+
+### User-Specific Limits
+
+```typescript
+const getUserId = (request: NextRequest) => {
+  // Extract from auth token or session
+  return request.cookies.get("userId")?.value || "anonymous";
+};
+
+const userId = getUserId(request);
+const result = await limiter.checkRateLimit(userId);
+```
+
+## Implementation Details
+
+### In-Memory Algorithm
+
+Uses a simple counter per key with automatic cleanup:
+1. Check if window has expired, reset if needed
+2. Increment counter
+3. Compare against limit
+
+### Redis Algorithm
+
+Uses sorted sets with sliding window:
+1. Remove expired entries from sorted set
+2. Count remaining entries
+3. Add new entry with current timestamp
+4. Set expiration on the key
+
+## Source Location
+
+`src/lib/API/rate-limiter.ts`

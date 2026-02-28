@@ -1,0 +1,507 @@
+---
+title: 'UI Components'
+description: 'API reference for core UI components in the Kars template'
+---
+
+# UI Components
+
+Core UI components built with Radix UI primitives and styled with Tailwind CSS.
+
+## Button
+
+A versatile button component with multiple variants and sizes.
+
+### Props
+
+<ParamField path="variant" type="string" default="default">
+  Button style variant. Options:
+  - `default` - Primary gradient button
+  - `destructive` - Red gradient for destructive actions
+  - `destructive-outline` - Outlined destructive variant
+  - `outline` - Bordered button with subtle background
+  - `secondary` - Secondary gradient styling
+  - `ghost` - Transparent button with hover effects
+  - `link` - Text link styling with underline
+  - `success` - Green gradient for success actions
+  - `success-outline` - Outlined success variant
+</ParamField>
+
+<ParamField path="size" type="string" default="default">
+  Button size. Options:
+  - `default` - Standard height (36px)
+  - `sm` - Small (32px)
+  - `lg` - Large (40px)
+  - `icon` - Square icon button (36x36px)
+</ParamField>
+
+<ParamField path="asChild" type="boolean" default="false">
+  When `true`, renders the button as a child element using Radix UI's Slot component. Useful for rendering buttons as links.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply to the button.
+</ParamField>
+
+### Usage
+
+<Tabs>
+  <Tab title="Basic">
+    ```tsx
+    import { Button } from "@/components/ui/button";
+
+    export default function Example() {
+      return (
+        <Button onClick={() => console.log("Clicked")}>
+          Click me
+        </Button>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Variants">
+    ```tsx
+    import { Button } from "@/components/ui/button";
+
+    export default function Example() {
+      return (
+        <div className="flex gap-2">
+          <Button variant="default">Default</Button>
+          <Button variant="destructive">Delete</Button>
+          <Button variant="outline">Cancel</Button>
+          <Button variant="ghost">Ghost</Button>
+          <Button variant="success">Save</Button>
+        </div>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="As Link">
+    ```tsx
+    import { Button } from "@/components/ui/button";
+    import Link from "next/link";
+
+    export default function Example() {
+      return (
+        <Button asChild>
+          <Link href="/dashboard">Go to Dashboard</Link>
+        </Button>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Card
+
+Container component for grouping related content with header, content, and footer sections.
+
+### Components
+
+- `Card` - Main container
+- `CardHeader` - Header section with padding
+- `CardTitle` - Title heading
+- `CardDescription` - Subtitle text
+- `CardContent` - Main content area
+- `CardFooter` - Footer section for actions
+
+### Props
+
+All card components accept standard HTML div attributes.
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply.
+</ParamField>
+
+### Usage
+
+```tsx
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+export default function Example() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Account Settings</CardTitle>
+        <CardDescription>
+          Manage your account preferences and settings.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p>Card content goes here.</p>
+      </CardContent>
+      <CardFooter>
+        <Button>Save Changes</Button>
+      </CardFooter>
+    </Card>
+  );
+}
+```
+
+---
+
+## Dialog
+
+Modal dialog component for focused user interactions.
+
+### Components
+
+- `Dialog` - Root component
+- `DialogTrigger` - Button that opens the dialog
+- `DialogContent` - Dialog content container
+- `DialogHeader` - Header section
+- `DialogTitle` - Dialog title
+- `DialogDescription` - Dialog description
+- `DialogFooter` - Footer for action buttons
+- `DialogClose` - Close button
+
+### Props
+
+<ParamField path="open" type="boolean">
+  Controlled open state of the dialog.
+</ParamField>
+
+<ParamField path="onOpenChange" type="(open: boolean) => void">
+  Callback when dialog open state changes.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes (for DialogContent).
+</ParamField>
+
+### Usage
+
+<Tabs>
+  <Tab title="Basic">
+    ```tsx
+    import {
+      Dialog,
+      DialogTrigger,
+      DialogContent,
+      DialogHeader,
+      DialogTitle,
+      DialogDescription,
+      DialogFooter,
+    } from "@/components/ui/dialog";
+    import { Button } from "@/components/ui/button";
+
+    export default function Example() {
+      return (
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button>Open Dialog</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Action</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to continue?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button>Confirm</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Controlled">
+    ```tsx
+    import { useState } from "react";
+    import { Dialog, DialogContent } from "@/components/ui/dialog";
+
+    export default function Example() {
+      const [open, setOpen] = useState(false);
+
+      return (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent>
+            <p>Dialog content</p>
+          </DialogContent>
+        </Dialog>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## DropdownMenu
+
+Menu component with items, checkboxes, radio groups, and submenus.
+
+### Components
+
+- `DropdownMenu` - Root component
+- `DropdownMenuTrigger` - Button that opens the menu
+- `DropdownMenuContent` - Menu content container
+- `DropdownMenuItem` - Individual menu item
+- `DropdownMenuCheckboxItem` - Checkbox menu item
+- `DropdownMenuRadioGroup` - Radio group container
+- `DropdownMenuRadioItem` - Radio menu item
+- `DropdownMenuLabel` - Section label
+- `DropdownMenuSeparator` - Visual separator
+- `DropdownMenuShortcut` - Keyboard shortcut display
+- `DropdownMenuSub` - Submenu container
+- `DropdownMenuSubTrigger` - Submenu trigger
+- `DropdownMenuSubContent` - Submenu content
+
+### MenuItem Props
+
+<ParamField path="variant" type="string" default="default">
+  Item variant. Options: `default`, `destructive`
+</ParamField>
+
+<ParamField path="inset" type="boolean">
+  Adds left padding for alignment with checkable items.
+</ParamField>
+
+<ParamField path="disabled" type="boolean">
+  Disables the menu item.
+</ParamField>
+
+### Usage
+
+<Tabs>
+  <Tab title="Basic">
+    ```tsx
+    import {
+      DropdownMenu,
+      DropdownMenuTrigger,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuSeparator,
+    } from "@/components/ui/dropdown-menu";
+    import { Button } from "@/components/ui/button";
+
+    export default function Example() {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>Open Menu</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem>Profile</DropdownMenuItem>
+            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive">
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="With Checkboxes">
+    ```tsx
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuCheckboxItem,
+    } from "@/components/ui/dropdown-menu";
+    import { useState } from "react";
+
+    export default function Example() {
+      const [checked, setChecked] = useState(false);
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuContent>
+            <DropdownMenuCheckboxItem
+              checked={checked}
+              onCheckedChange={setChecked}
+            >
+              Enable notifications
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Badge
+
+Small label component for status indicators and tags.
+
+### Props
+
+<ParamField path="variant" type="string" default="default">
+  Badge style. Options:
+  - `default` - Primary gradient
+  - `secondary` - Secondary gradient
+  - `destructive` - Red gradient
+  - `outline` - Bordered
+  - `ghost` - Transparent
+</ParamField>
+
+<ParamField path="size" type="string" default="default">
+  Badge size. Options: `sm`, `default`, `lg`
+</ParamField>
+
+<ParamField path="asChild" type="boolean" default="false">
+  Render as child element.
+</ParamField>
+
+### Usage
+
+```tsx
+import { Badge } from "@/components/ui/badge";
+
+export default function Example() {
+  return (
+    <div className="flex gap-2">
+      <Badge>Default</Badge>
+      <Badge variant="secondary">Secondary</Badge>
+      <Badge variant="outline">Outline</Badge>
+      <Badge variant="destructive">Error</Badge>
+    </div>
+  );
+}
+```
+
+---
+
+## Avatar
+
+User avatar component with image and fallback support.
+
+### Components
+
+- `Avatar` - Container component
+- `AvatarImage` - Image element
+- `AvatarFallback` - Fallback content (initials, icon)
+
+### Props
+
+<ParamField path="src" type="string">
+  Image source URL (for AvatarImage).
+</ParamField>
+
+<ParamField path="alt" type="string">
+  Alt text for the image.
+</ParamField>
+
+### Usage
+
+```tsx
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
+export default function Example() {
+  return (
+    <Avatar>
+      <AvatarImage src="/avatar.jpg" alt="User" />
+      <AvatarFallback>JD</AvatarFallback>
+    </Avatar>
+  );
+}
+```
+
+---
+
+## Tooltip
+
+Simple tooltip component for providing contextual information.
+
+### Props
+
+<ParamField path="content" type="string" required>
+  The tooltip text to display.
+</ParamField>
+
+<ParamField path="position" type="string" default="top">
+  Tooltip position. Options: `top`, `bottom`, `left`, `right`
+</ParamField>
+
+<ParamField path="smallWidth" type="boolean" default="false">
+  Constrains tooltip to max 100px width with text truncation.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes for the tooltip.
+</ParamField>
+
+### Usage
+
+```tsx
+import { Tooltip } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+
+export default function Example() {
+  return (
+    <Tooltip content="Click to save changes" position="top">
+      <Button>Save</Button>
+    </Tooltip>
+  );
+}
+```
+
+---
+
+## Tabs
+
+Tab component for organizing content into switchable panels.
+
+### Components
+
+- `Tabs` - Root container
+- `TabsList` - Tab buttons container
+- `TabsTrigger` - Individual tab button
+- `TabsContent` - Tab panel content
+
+### Props
+
+<ParamField path="defaultValue" type="string">
+  Default active tab value.
+</ParamField>
+
+<ParamField path="value" type="string">
+  Controlled active tab value.
+</ParamField>
+
+<ParamField path="onValueChange" type="(value: string) => void">
+  Callback when active tab changes.
+</ParamField>
+
+### Usage
+
+```tsx
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+export default function Example() {
+  return (
+    <Tabs defaultValue="overview">
+      <TabsList>
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        <TabsTrigger value="settings">Settings</TabsTrigger>
+      </TabsList>
+      <TabsContent value="overview">
+        <p>Overview content</p>
+      </TabsContent>
+      <TabsContent value="analytics">
+        <p>Analytics content</p>
+      </TabsContent>
+      <TabsContent value="settings">
+        <p>Settings content</p>
+      </TabsContent>
+    </Tabs>
+  );
+}
+```

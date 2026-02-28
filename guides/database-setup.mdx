@@ -1,0 +1,332 @@
+---
+title: Database Setup
+description: Set up and configure Prisma with PostgreSQL in your Kars Next.js template
+---
+
+The Kars Next.js template comes with Prisma pre-configured for seamless database integration. This guide walks you through setting up your database and working with Prisma.
+
+## Prerequisites
+
+Before starting, ensure you have:
+- A PostgreSQL database (local or hosted)
+- Node.js and npm/yarn/pnpm installed
+- The Kars template cloned and dependencies installed
+
+## Prisma Configuration
+
+The template uses a custom Prisma configuration file at the project root.
+
+### prisma.config.ts
+
+```typescript
+import type { PrismaConfig } from "prisma"
+
+export default {
+    schema: "src/prisma/schema.prisma",
+} satisfies PrismaConfig;
+```
+
+<Note>
+  The Prisma schema is located at `src/prisma/schema.prisma` instead of the default `prisma/schema.prisma` location.
+</Note>
+
+## Database Schema
+
+The template includes a sample schema with an Account model:
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DB_PRISMA_URL")
+}
+
+model Account {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  email     String   @unique
+  name      String?
+}
+```
+
+### Schema Location
+
+The schema is located at:
+```
+src/prisma/schema.prisma
+```
+
+## Environment Variables
+
+### Required Variables
+
+Create a `.env.local` file in your project root and add your database connection string:
+
+```bash
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
+DB_PRISMA_URL="postgresql://user:password@localhost:5432/mydb"
+REDIS_URL="redis://localhost:6379"
+```
+
+<Warning>
+  The schema uses `DB_PRISMA_URL` while `.env.example` shows `DATABASE_URL`. Make sure to set both or update your schema to use `DATABASE_URL` for consistency.
+</Warning>
+
+### Connection String Format
+
+PostgreSQL connection strings follow this format:
+
+```
+postgresql://[user]:[password]@[host]:[port]/[database]?[parameters]
+```
+
+Example:
+```
+DB_PRISMA_URL="postgresql://postgres:mypassword@localhost:5432/kars_db"
+```
+
+## Setup Steps
+
+<Steps>
+  <Step title="Install dependencies">
+    The template automatically generates the Prisma client after installation via the `postinstall` script:
+    
+    ```bash
+    npm install
+    # or
+    yarn install
+    # or
+    pnpm install
+    ```
+    
+    This runs `npx prisma generate` automatically (see `package.json:9`).
+  </Step>
+  
+  <Step title="Configure your database">
+    Add your database connection string to `.env.local`:
+    
+    ```bash
+    DB_PRISMA_URL="postgresql://user:password@localhost:5432/mydb"
+    ```
+  </Step>
+  
+  <Step title="Create your first migration">
+    Generate and apply your initial database migration:
+    
+    ```bash
+    npx prisma migrate dev --name init
+    ```
+    
+    This will:
+    - Create a new migration file
+    - Apply the migration to your database
+    - Regenerate the Prisma client
+  </Step>
+  
+  <Step title="Verify the setup">
+    Open Prisma Studio to view your database:
+    
+    ```bash
+    npx prisma studio
+    ```
+    
+    This opens a browser interface at `http://localhost:5555`.
+  </Step>
+</Steps>
+
+## Using Prisma in Your App
+
+### Import the Prisma Client
+
+```typescript
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+```
+
+### Best Practice: Singleton Pattern
+
+Create a Prisma client instance using the singleton pattern to avoid multiple connections:
+
+```typescript
+// src/lib/prisma.ts
+import { PrismaClient } from '@prisma/client'
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+}
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient()
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+```
+
+### Example: API Route
+
+```typescript
+// src/app/api/users/route.ts
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+export async function GET() {
+  try {
+    const accounts = await prisma.account.findMany()
+    return NextResponse.json(accounts)
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to fetch accounts' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const { email, name } = await request.json()
+    
+    const account = await prisma.account.create({
+      data: { email, name },
+    })
+    
+    return NextResponse.json(account)
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to create account' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+## Modifying Your Schema
+
+### Adding a New Model
+
+Edit `src/prisma/schema.prisma` to add new models:
+
+```prisma
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  Int
+  author    Account  @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  email     String   @unique
+  name      String?
+  posts     Post[]   // Add relation
+}
+```
+
+### Applying Schema Changes
+
+<Steps>
+  <Step title="Create a migration">
+    ```bash
+    npx prisma migrate dev --name add_posts_model
+    ```
+  </Step>
+  
+  <Step title="Prisma client regenerates automatically">
+    The migration command automatically regenerates the client with your new models.
+  </Step>
+  
+  <Step title="Use your new model">
+    ```typescript
+    const post = await prisma.post.create({
+      data: {
+        title: 'My First Post',
+        content: 'Hello World',
+        authorId: 1,
+      },
+    })
+    ```
+  </Step>
+</Steps>
+
+## Common Commands
+
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Create and apply a migration
+npx prisma migrate dev --name migration_name
+
+# Apply pending migrations (production)
+npx prisma migrate deploy
+
+# Open Prisma Studio
+npx prisma studio
+
+# Reset database (⚠️ deletes all data)
+npx prisma migrate reset
+
+# Format schema file
+npx prisma format
+```
+
+## Database Providers
+
+While the template uses PostgreSQL by default, Prisma supports multiple databases:
+
+```prisma
+// PostgreSQL (default)
+provider = "postgresql"
+
+// MySQL
+provider = "mysql"
+
+// SQLite (for development)
+provider = "sqlite"
+
+// MongoDB
+provider = "mongodb"
+
+// SQL Server
+provider = "sqlserver"
+```
+
+Change the `provider` in your schema and update your connection string accordingly.
+
+## Troubleshooting
+
+### Client not generating
+
+If the Prisma client isn't generating automatically:
+
+```bash
+npx prisma generate
+```
+
+### Migration fails
+
+Check your database connection and ensure:
+- Database server is running
+- Connection string is correct in `.env.local`
+- Database user has proper permissions
+
+### Schema location error
+
+Ensure your `prisma.config.ts` points to the correct schema location:
+
+```typescript
+schema: "src/prisma/schema.prisma"
+```
+
+<Note>
+  The template uses a custom schema location. Standard Prisma documentation examples use `prisma/schema.prisma`, but this template uses `src/prisma/schema.prisma`.
+</Note>

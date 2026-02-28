@@ -1,80 +1,505 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Get up and running with the Kars Next.js Template in minutes
 ---
 
-## Get started in three steps
+# Quick Start Guide
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This guide will walk you through customizing the template and building your first feature. By the end, you'll have a working understanding of the template's structure and capabilities.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Make sure you've completed the [Installation](/getting-started/installation) before proceeding.
 </Note>
+
+## Start the Development Server
+
+<Steps>
+  <Step title="Run the dev server">
+    Start your Next.js development server:
+
+    <CodeGroup>
+    ```bash npm
+    npm run dev
+    ```
+
+    ```bash yarn
+    yarn dev
+    ```
+
+    ```bash pnpm
+    pnpm dev
+    ```
+    </CodeGroup>
+
+    Your application will be running at [http://localhost:3000](http://localhost:3000)
+  </Step>
+
+  <Step title="View the landing page">
+    Open your browser and navigate to `http://localhost:3000`. You should see the default landing page with:
+
+    - A hero section with gradient text
+    - Feature cards showcasing template capabilities
+    - Installation instructions
+    - A footer with links
+
+    <Tip>
+      The page auto-updates as you edit files, thanks to Next.js Fast Refresh!
+    </Tip>
+  </Step>
+</Steps>
+
+## Customize the Landing Page
+
+Let's customize the main landing page to make it your own.
+
+<Steps>
+  <Step title="Open the page file">
+    The landing page is located at:
+
+    ```
+    src/app/(website)/(landing)/page.tsx
+    ```
+
+    This file contains the entire homepage component.
+  </Step>
+
+  <Step title="Update the hero text">
+    Find the hero section (around line 99) and customize the heading:
+
+    ```tsx src/app/(website)/(landing)/page.tsx
+    <h2 className="mb-6 text-4xl leading-tight font-bold tracking-tight text-balance md:text-6xl md:leading-tight">
+      Build{" "}
+      <span className="bg-linear-to-r from-[#FF5E69] to-[#B16CEA] bg-clip-text text-transparent">
+        Amazing
+      </span>
+      , Ship{" "}
+      <span className="bg-linear-to-r from-[#B16CEA] to-[#FF5E69] bg-clip-text text-transparent">
+        Fast
+      </span>
+    </h2>
+    ```
+
+    Change the text to match your project. The gradient spans use Tailwind's background clip utilities.
+  </Step>
+
+  <Step title="Customize the description">
+    Update the description text below the heading:
+
+    ```tsx src/app/(website)/(landing)/page.tsx
+    <p className="text-muted-foreground mb-8 max-w-2xl text-base leading-relaxed text-pretty md:text-lg">
+      Your custom description goes here. Explain what makes your project unique.
+    </p>
+    ```
+  </Step>
+
+  <Step title="Modify feature cards">
+    The features array (lines 23-65) defines the feature cards. Customize them:
+
+    ```tsx src/app/(website)/(landing)/page.tsx
+    const features = [
+      {
+        icon: Palette,
+        title: "Your Feature",
+        description: "Description of your amazing feature",
+      },
+      // Add more features...
+    ];
+    ```
+
+    Available icons from `lucide-react`: `Palette`, `Sparkles`, `Database`, `Shield`, `Code`, `Zap`, `Globe`, `Rocket`, and many more.
+  </Step>
+</Steps>
+
+## Make Your First API Request
+
+The template includes a custom Axios API client. Let's use it to fetch data.
+
+<Steps>
+  <Step title="Create a new component">
+    Create a new component file:
+
+    ```tsx src/components/example-api.tsx
+    "use client";
+
+    import { useState } from "react";
+    import api from "@/lib/API/api";
+    import { Button } from "@/components/ui/button";
+
+    export function ExampleApi() {
+      const [data, setData] = useState<any>(null);
+      const [loading, setLoading] = useState(false);
+
+      const fetchData = async () => {
+        setLoading(true);
+        const response = await api.get("/api/example");
+        
+        if (response.status === 200) {
+          setData(response.data);
+        }
+        setLoading(false);
+      };
+
+      return (
+        <div className="space-y-4">
+          <Button onClick={fetchData} disabled={loading}>
+            {loading ? "Loading..." : "Fetch Data"}
+          </Button>
+          
+          {data && (
+            <pre className="bg-muted p-4 rounded-lg">
+              {JSON.stringify(data, null, 2)}
+            </pre>
+          )}
+        </div>
+      );
+    }
+    ```
+  </Step>
+
+  <Step title="Add to your page">
+    Import and use the component in your landing page:
+
+    ```tsx src/app/(website)/(landing)/page.tsx
+    import { ExampleApi } from "@/components/example-api";
+
+    export default function IndexPage() {
+      // ... existing code
+
+      return (
+        <div className="bg-background min-h-screen px-4">
+          {/* ... existing content */}
+          
+          <ExampleApi />
+        </div>
+      );
+    }
+    ```
+  </Step>
+
+  <Step title="Try the API">
+    Click the "Fetch Data" button on your page. The template includes an example API route at `/api/example` that returns:
+
+    ```json
+    {
+      "message": "Hello World"
+    }
+    ```
+
+    <Check>
+      The API client automatically handles authentication headers and error responses!
+    </Check>
+  </Step>
+</Steps>
+
+## Create an API Route with Validation
+
+Let's create a new API route with Zod validation and rate limiting.
+
+<Steps>
+  <Step title="Create the route file">
+    Create a new API route:
+
+    ```typescript src/app/api/contact/route.ts
+    import { NextRequest } from "next/server";
+    import {
+      successResponse,
+      handleAndReturnErrorResponse,
+      validateRequestBody,
+    } from "@/lib/API/handler";
+    import { withRateLimit } from "@/lib/API/middleware";
+    import { contactFormSchema } from "@/lib/validation/schemas";
+
+    export const POST = withRateLimit(async (req: NextRequest) => {
+      try {
+        // Validate the request body against the schema
+        const validatedData = await validateRequestBody(contactFormSchema, req);
+
+        // Process the contact form (send email, save to DB, etc.)
+        console.log("Contact form data:", validatedData);
+
+        return successResponse({
+          message: "Contact form submitted successfully",
+          status: 200,
+          data: validatedData,
+        });
+      } catch (error) {
+        return handleAndReturnErrorResponse(error);
+      }
+    });
+    ```
+
+    <Note>
+      The `withRateLimit` middleware automatically applies rate limiting. The `validateRequestBody` function ensures type-safe data validation.
+    </Note>
+  </Step>
+
+  <Step title="Understand the schema">
+    The `contactFormSchema` is defined in `src/lib/validation/schemas.ts`:
+
+    ```typescript src/lib/validation/schemas.ts
+    export const contactFormSchema = z.object({
+      name: z.string().min(2, "Name must be at least 2 characters"),
+      email: z.email("Invalid email address"),
+      message: z.string().min(10, "Message must be at least 10 characters"),
+    });
+    ```
+
+    This provides automatic validation with helpful error messages.
+  </Step>
+
+  <Step title="Call from the frontend">
+    Use the API client to call your new endpoint:
+
+    ```tsx
+    import api from "@/lib/API/api";
+
+    const submitContactForm = async (formData: ContactFormInput) => {
+      const response = await api.post("/api/contact", formData);
+      
+      if (response.status === 200) {
+        console.log("Success!", response.data);
+      } else {
+        console.error("Error:", response.error);
+      }
+    };
+    ```
+  </Step>
+</Steps>
+
+## Use UI Components
+
+The template includes 30+ pre-built ShadCN UI components. Let's use a few.
+
+<Steps>
+  <Step title="Create a card component">
+    ```tsx src/components/info-card.tsx
+    import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+    import { Button } from "@/components/ui/button";
+
+    export function InfoCard() {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Welcome to Your Project</CardTitle>
+            <CardDescription>
+              This is a custom card component using ShadCN UI
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              You can customize this card with any content you need.
+            </p>
+            <Button>Get Started</Button>
+          </CardContent>
+        </Card>
+      );
+    }
+    ```
+  </Step>
+
+  <Step title="Use a dialog">
+    ```tsx src/components/example-dialog.tsx
+    "use client";
+
+    import { useState } from "react";
+    import {
+      Dialog,
+      DialogContent,
+      DialogDescription,
+      DialogHeader,
+      DialogTitle,
+      DialogTrigger,
+    } from "@/components/ui/dialog";
+    import { Button } from "@/components/ui/button";
+
+    export function ExampleDialog() {
+      const [open, setOpen] = useState(false);
+
+      return (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>Open Dialog</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Example Dialog</DialogTitle>
+              <DialogDescription>
+                This is a pre-built dialog component from ShadCN UI.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p>Add your content here.</p>
+              <Button onClick={() => setOpen(false)}>Close</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      );
+    }
+    ```
+  </Step>
+
+  <Step title="Show a toast notification">
+    ```tsx
+    "use client";
+
+    import { toast } from "sonner";
+    import { Button } from "@/components/ui/button";
+
+    export function ToastExample() {
+      return (
+        <Button 
+          onClick={() => {
+            toast.success("Success!", {
+              description: "Your action was completed successfully.",
+            });
+          }}
+        >
+          Show Toast
+        </Button>
+      );
+    }
+    ```
+
+    <Tip>
+      The `Toaster` component is already included in the root provider at `src/lib/custom/providers/index.tsx`
+    </Tip>
+  </Step>
+</Steps>
+
+## Understanding the Project Structure
+
+```bash
+src/
+├── app/
+│   ├── (website)/          # Website routes group
+│   │   ├── (landing)/      # Landing page
+│   │   ├── 404/            # Custom 404 page
+│   │   └── error.tsx       # Error boundary
+│   ├── api/                # API routes
+│   │   └── example/        # Example API endpoint
+│   ├── layout.tsx          # Root layout
+│   └── not-found.tsx       # 404 handler
+├── components/
+│   └── ui/                 # 30+ ShadCN UI components
+├── lib/
+│   ├── API/                # API client & utilities
+│   │   ├── api.ts          # Axios wrapper
+│   │   ├── handler.ts      # Response handlers
+│   │   ├── middleware.ts   # Auth & rate limit middleware
+│   │   └── rate-limit.ts   # Rate limit configuration
+│   ├── auth/               # Authentication utilities
+│   ├── cache/              # Redis client
+│   ├── database/           # Prisma client
+│   ├── validation/         # Zod schemas
+│   └── custom/             # Custom providers & hooks
+├── constants/              # Site configuration
+prisma/
+└── schema.prisma           # Database schema
+```
+
+## Key Concepts
+
+### API Client
+
+The custom Axios client (`src/lib/API/api.ts`) provides:
+- Automatic authentication headers
+- Type-safe responses
+- Error handling
+- Base URL configuration
+
+```typescript
+import api from "@/lib/API/api";
+
+// GET request
+const response = await api.get<DataType>("/api/endpoint");
+
+// POST request
+const response = await api.post<ResponseType, BodyType>(
+  "/api/endpoint",
+  { data: "value" }
+);
+```
+
+### Validation
+
+Zod schemas in `src/lib/validation/schemas.ts` provide type-safe validation:
+
+```typescript
+import { z } from "zod";
+
+export const mySchema = z.object({
+  email: z.email("Invalid email"),
+  name: z.string().min(2),
+});
+
+export type MyInput = z.infer<typeof mySchema>;
+```
+
+### Rate Limiting
+
+API routes are protected with rate limiting:
+
+```typescript
+import { withRateLimit } from "@/lib/API/middleware";
+
+export const POST = withRateLimit(async (req: NextRequest) => {
+  // Your handler code
+});
+```
+
+Rate limits:
+- **Default**: 100 requests per 15 minutes
+- **Strict**: 5 requests per minute
+- Supports both Redis and in-memory storage
+
+### Smooth Scroll
+
+Lenis smooth scroll is enabled by default on desktop (>1024px). Configure it in your constants:
+
+```typescript src/constants/index.ts
+export const website = {
+  enableLenis: true, // Enable/disable smooth scroll
+  accentColor: "#B16CEA",
+  // ... other config
+};
+```
+
+## Next Steps
+
+You're now ready to build with the template!
+
+<CardGroup cols={2}>
+  <Card title="Explore Components" icon="square-stack" href="/features/ui-components">
+    Browse and use 30+ pre-built UI components
+  </Card>
+  
+  <Card title="Configure Your Site" icon="gear" href="/guides/configuration">
+    Customize colors, fonts, and site settings
+  </Card>
+  
+  <Card title="API Features" icon="code" href="/features/api-client">
+    Learn about rate limiting, authentication, and validation
+  </Card>
+  
+  <Card title="Database Setup" icon="database" href="/guides/database-setup">
+    Connect your database with Prisma
+  </Card>
+  
+  <Card title="Configure Your Site" icon="gear" href="/configuration/overview">
+    Customize colors, fonts, and site settings
+  </Card>
+  
+  <Card title="API Features" icon="code" href="/features/api-client">
+    Learn advanced API client features
+  </Card>
+  
+  <Card title="Database Setup" icon="database" href="/features/database">
+    Set up Prisma and your database
+  </Card>
+</CardGroup>
+
+---
+
+<Tip>
+  **Need help?** Check out the component examples in `src/app/api/example/route.ts` to see all features in action.
+</Tip>

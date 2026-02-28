@@ -1,0 +1,282 @@
+---
+title: "API Client"
+description: "Type-safe HTTP client for making API requests"
+---
+
+The `api` class provides a type-safe wrapper around Axios for making HTTP requests with automatic authentication token handling and standardized error responses.
+
+## Overview
+
+The API client is a static class that automatically:
+- Handles authentication tokens via Bearer headers
+- Configures base URL based on environment
+- Provides consistent response formatting
+- Manages error handling for all HTTP methods
+
+## ApiResponse Interface
+
+```typescript
+interface ApiResponse<T = unknown> {
+  status: number;
+  data: T;
+  error?: string;
+}
+```
+
+<ResponseField name="status" type="number" required>
+  HTTP status code of the response
+</ResponseField>
+
+<ResponseField name="data" type="T" required>
+  Response data with generic type support
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if request failed
+</ResponseField>
+
+## Methods
+
+### get()
+
+Perform a GET request.
+
+```typescript
+static async get<T = unknown, P = unknown>(
+  url: string,
+  config?: Omit<AxiosRequestConfig<P>, "url">
+): Promise<ApiResponse<T>>
+```
+
+<ParamField path="url" type="string" required>
+  The endpoint URL path
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional Axios request configuration (excludes `url`)
+</ParamField>
+
+**Returns:** `Promise<ApiResponse<T>>` - The API response with typed data
+
+**Example:**
+
+```typescript
+import api from "@/lib/API/api";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
+const response = await api.get<User>("/api/user/profile");
+
+if (response.error) {
+  console.error("Request failed:", response.error);
+} else {
+  console.log("User:", response.data);
+}
+```
+
+### post()
+
+Perform a POST request.
+
+```typescript
+static async post<T = unknown, D = unknown>(
+  url: string,
+  data?: D,
+  config?: Omit<AxiosRequestConfig<D>, "url" | "data">
+): Promise<ApiResponse<T>>
+```
+
+<ParamField path="url" type="string" required>
+  The endpoint URL path
+</ParamField>
+
+<ParamField path="data" type="D">
+  Request body data
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional Axios request configuration (excludes `url` and `data`)
+</ParamField>
+
+**Returns:** `Promise<ApiResponse<T>>` - The API response with typed data
+
+**Example:**
+
+```typescript
+import api from "@/lib/API/api";
+
+interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+interface LoginResponse {
+  token: string;
+  user: { id: string; email: string };
+}
+
+const response = await api.post<LoginResponse, LoginRequest>(
+  "/api/auth/login",
+  {
+    email: "user@example.com",
+    password: "securepassword",
+  }
+);
+
+if (response.status === 200) {
+  console.log("Login successful:", response.data.token);
+}
+```
+
+### put()
+
+Perform a PUT request.
+
+```typescript
+static async put<T = unknown, D = unknown>(
+  url: string,
+  data?: D,
+  config?: Omit<AxiosRequestConfig<D>, "url" | "data">
+): Promise<ApiResponse<T>>
+```
+
+<ParamField path="url" type="string" required>
+  The endpoint URL path
+</ParamField>
+
+<ParamField path="data" type="D">
+  Request body data
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional Axios request configuration (excludes `url` and `data`)
+</ParamField>
+
+**Returns:** `Promise<ApiResponse<T>>` - The API response with typed data
+
+**Example:**
+
+```typescript
+import api from "@/lib/API/api";
+
+interface UpdateProfileRequest {
+  name: string;
+  bio: string;
+}
+
+const response = await api.put<User, UpdateProfileRequest>(
+  "/api/user/profile",
+  {
+    name: "John Doe",
+    bio: "Software developer",
+  }
+);
+```
+
+### delete()
+
+Perform a DELETE request.
+
+```typescript
+static async delete<T = unknown>(
+  url: string,
+  config?: Omit<AxiosRequestConfig, "url">
+): Promise<ApiResponse<T>>
+```
+
+<ParamField path="url" type="string" required>
+  The endpoint URL path
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional Axios request configuration (excludes `url`)
+</ParamField>
+
+**Returns:** `Promise<ApiResponse<T>>` - The API response with typed data
+
+**Example:**
+
+```typescript
+import api from "@/lib/API/api";
+
+const response = await api.delete("/api/user/account");
+
+if (response.status === 200) {
+  console.log("Account deleted successfully");
+}
+```
+
+### patch()
+
+Perform a PATCH request.
+
+```typescript
+static async patch<T = unknown, D = unknown>(
+  url: string,
+  data?: D,
+  config?: Omit<AxiosRequestConfig<D>, "url" | "data">
+): Promise<ApiResponse<T>>
+```
+
+<ParamField path="url" type="string" required>
+  The endpoint URL path
+</ParamField>
+
+<ParamField path="data" type="D">
+  Request body data for partial updates
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional Axios request configuration (excludes `url` and `data`)
+</ParamField>
+
+**Returns:** `Promise<ApiResponse<T>>` - The API response with typed data
+
+**Example:**
+
+```typescript
+import api from "@/lib/API/api";
+
+interface PartialUpdate {
+  name?: string;
+  email?: string;
+}
+
+const response = await api.patch<User, PartialUpdate>(
+  "/api/user/profile",
+  { name: "Jane Doe" }
+);
+```
+
+## Configuration
+
+The API client is automatically configured with:
+
+- **Base URL**: `http://localhost:3000` in development, `process.env.NEXT_PUBLIC_APP_URL` in production
+- **Credentials**: Cookies are sent with requests (`withCredentials: true`)
+- **Content-Type**: `application/json` by default
+- **Authentication**: Automatic Bearer token injection from cookies
+
+## Error Handling
+
+All methods catch errors and return them in the response object:
+
+```typescript
+const response = await api.get("/api/data");
+
+if (response.error) {
+  // Handle error
+  console.error(`Request failed with status ${response.status}:`, response.error);
+} else {
+  // Success
+  console.log("Data:", response.data);
+}
+```
+
+## Source Location
+
+`src/lib/API/api.ts:17`

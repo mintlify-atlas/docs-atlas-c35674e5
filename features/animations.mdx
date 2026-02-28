@@ -1,0 +1,542 @@
+---
+title: 'Animations'
+description: 'Smooth scrolling, motion effects, and animation utilities'
+icon: 'wand-magic-sparkles'
+---
+
+## Overview
+
+The Kars Template includes a powerful animation system featuring Lenis for smooth scrolling, Motion (Framer Motion) for component animations, and custom animation utilities.
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Lenis Smooth Scroll" icon="arrow-down">
+    Buttery smooth scrolling experience
+  </Card>
+  <Card title="Motion Animations" icon="sparkles">
+    Framer Motion for React animations
+  </Card>
+  <Card title="Responsive" icon="mobile">
+    Adapts to screen size (disabled on mobile)
+  </Card>
+  <Card title="Custom Effects" icon="wand-magic">
+    Progressive blur and shimmer effects
+  </Card>
+</CardGroup>
+
+## Lenis Smooth Scroll
+
+Lenis provides a smooth, momentum-based scrolling experience. It's automatically initialized in the root provider.
+
+### Implementation
+
+```tsx src/lib/custom/providers/index.tsx
+"use client";
+import Lenis from "lenis";
+import { useEffect, useState, createContext } from "react";
+import { website } from "@/constants";
+
+type Scroll = Lenis;
+
+type SPContextType = {
+  scroll: Scroll | null;
+  SPController: SPController;
+  setSPController: React.Dispatch<React.SetStateAction<SPController>>;
+};
+
+type SPController = "ALLOWINIT" | "DISABLE" | "ENABLE" | "IDLE";
+
+export const SPContext = createContext<SPContextType>(null as any);
+
+export function RootProvider({ children, className = "" }) {
+  const [scroll, setScroll] = useState<Lenis | null>(null);
+  const [SPController, setSPController] = useState<SPController>(
+    website.enableLenis ? "ALLOWINIT" : "DISABLE",
+  );
+
+  function onResize() {
+    // Disable smooth scroll on mobile devices
+    if (window.innerWidth < 1024) {
+      setSPController("DISABLE");
+    } else if (website.enableLenis) {
+      setSPController("ENABLE");
+    }
+  }
+
+  useEffect(() => {
+    function initSP() {
+      const ls = new Lenis({ lerp: 0.15 });
+      function raf(time: number) {
+        ls.raf(time);
+        requestAnimationFrame(raf);
+      }
+      requestAnimationFrame(raf);
+      setScroll(ls);
+    }
+
+    function destroySP() {
+      scroll?.destroy();
+    }
+
+    switch (SPController) {
+      case "ALLOWINIT":
+        if (window.innerWidth > 1024) {
+          setSPController("ENABLE");
+        }
+        break;
+      case "DISABLE":
+        destroySP();
+        break;
+      case "ENABLE":
+        initSP();
+        break;
+    }
+
+    return () => {
+      destroySP();
+    };
+  }, [SPController]);
+
+  useEffect(() => {
+    window.addEventListener("resize", onResize);
+  }, []);
+
+  return (
+    <body className={className}>
+      <SPContext.Provider
+        value={{
+          scroll,
+          SPController,
+          setSPController,
+        }}
+      >
+        {children}
+      </SPContext.Provider>
+    </body>
+  );
+}
+```
+
+### Configuration
+
+Enable/disable Lenis in your constants:
+
+```tsx src/constants.ts
+export const website = {
+  enableLenis: true,  // Enable smooth scrolling
+  // ... other settings
+};
+```
+
+### Lenis Options
+
+```typescript
+const lenis = new Lenis({
+  lerp: 0.15,           // Smoothing factor (0-1)
+  duration: 1.2,        // Scroll duration
+  easing: (t) => t,     // Easing function
+  orientation: 'vertical', // 'vertical' | 'horizontal'
+  smoothWheel: true,    // Smooth wheel events
+  smoothTouch: false,   // Smooth touch events (usually false for mobile)
+});
+```
+
+### Using Lenis Context
+
+Access the Lenis instance in your components:
+
+```tsx components/scroll-to-top.tsx
+"use client";
+
+import { useContext } from "react";
+import { SPContext } from "@/lib/custom/providers";
+import { Button } from "@/components/ui/button";
+
+export function ScrollToTop() {
+  const { scroll } = useContext(SPContext);
+
+  function handleClick() {
+    scroll?.scrollTo(0, {
+      duration: 1.5,
+      easing: (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+    });
+  }
+
+  return (
+    <Button onClick={handleClick}>
+      Scroll to Top
+    </Button>
+  );
+}
+```
+
+### Lenis Methods
+
+<Tabs>
+  <Tab title="scrollTo">
+    ```typescript
+    scroll.scrollTo(target, options?)
+    
+    // Scroll to position
+    scroll.scrollTo(1000)
+    
+    // Scroll to element
+    scroll.scrollTo('#section-id')
+    
+    // With options
+    scroll.scrollTo('#section', {
+      offset: -100,        // Offset from target
+      duration: 2,         // Duration in seconds
+      easing: (t) => t,   // Easing function
+    })
+    ```
+  </Tab>
+  <Tab title="start/stop">
+    ```typescript
+    // Start smooth scrolling
+    scroll.start()
+    
+    // Stop smooth scrolling
+    scroll.stop()
+    ```
+  </Tab>
+  <Tab title="on/off">
+    ```typescript
+    // Listen to scroll events
+    scroll.on('scroll', (e) => {
+      console.log(e.scroll)    // Current scroll position
+      console.log(e.limit)     // Max scroll
+      console.log(e.velocity)  // Scroll velocity
+      console.log(e.direction) // 1 or -1
+      console.log(e.progress)  // 0 to 1
+    })
+    
+    // Remove listener
+    scroll.off('scroll', handler)
+    ```
+  </Tab>
+  <Tab title="destroy">
+    ```typescript
+    // Clean up Lenis instance
+    scroll.destroy()
+    ```
+  </Tab>
+</Tabs>
+
+## Motion (Framer Motion)
+
+The template uses Motion for React component animations.
+
+### Basic Animations
+
+```tsx components/fade-in.tsx
+"use client";
+
+import { motion } from "motion/react";
+
+export function FadeIn({ children }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+```
+
+### Scroll-Triggered Animations
+
+```tsx components/scroll-reveal.tsx
+"use client";
+
+import { motion } from "motion/react";
+import { useInView } from "motion/react";
+import { useRef } from "react";
+
+export function ScrollReveal({ children }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 50 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6 }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+```
+
+### Stagger Children
+
+```tsx components/stagger-list.tsx
+"use client";
+
+import { motion } from "motion/react";
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
+
+export function StaggerList({ items }) {
+  return (
+    <motion.ul
+      variants={container}
+      initial="hidden"
+      animate="show"
+    >
+      {items.map((item, i) => (
+        <motion.li key={i} variants={item}>
+          {item}
+        </motion.li>
+      ))}
+    </motion.ul>
+  );
+}
+```
+
+### Layout Animations
+
+```tsx components/expandable-card.tsx
+"use client";
+
+import { motion } from "motion/react";
+import { useState } from "react";
+
+export function ExpandableCard() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <motion.div
+      layout
+      onClick={() => setIsOpen(!isOpen)}
+      style={{
+        borderRadius: 8,
+        background: "white",
+        padding: 20,
+      }}
+    >
+      <motion.h2 layout>Title</motion.h2>
+      {isOpen && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          Content here...
+        </motion.p>
+      )}
+    </motion.div>
+  );
+}
+```
+
+## Custom Animation Components
+
+### ProgressiveBlur
+
+Create progressive blur effects:
+
+```tsx src/lib/animations/partials/progressive-blur.tsx
+interface ProgressiveBlurProps {
+  className?: string;
+  direction: "left" | "right";
+  blurIntensity?: number;
+}
+
+export function ProgressiveBlur({
+  className = "",
+  direction,
+  blurIntensity = 1,
+}: ProgressiveBlurProps) {
+  const gradientDirection = direction === "left" ? "to right" : "to left";
+
+  const maskImage = `linear-gradient(${gradientDirection}, transparent, rgba(0,0,0,${blurIntensity}))`;
+
+  return (
+    <div
+      className={className}
+      style={{
+        backdropFilter: `blur(${blurIntensity * 4}px)`,
+        WebkitBackdropFilter: `blur(${blurIntensity * 4}px)`,
+        maskImage,
+        WebkitMaskImage: maskImage,
+      }}
+    />
+  );
+}
+```
+
+#### Usage
+
+```tsx
+import { ProgressiveBlur } from "@/lib/animations/partials/progressive-blur";
+
+<div className="relative">
+  <img src="/image.jpg" alt="Background" />
+  <ProgressiveBlur 
+    direction="left" 
+    blurIntensity={0.8}
+    className="absolute inset-0"
+  />
+</div>
+```
+
+## Animation Utilities
+
+### Tailwind Animate
+
+The template includes `tailwindcss-animate` for CSS animations:
+
+```tsx
+<div className="animate-fade-in">
+  Fades in
+</div>
+
+<div className="animate-slide-in-from-bottom">
+  Slides in from bottom
+</div>
+
+<div className="animate-spin">
+  Spins
+</div>
+```
+
+### Custom Tailwind Animations
+
+Add custom animations in `tailwind.config.js`:
+
+```javascript tailwind.config.js
+module.exports = {
+  theme: {
+    extend: {
+      animation: {
+        'float': 'float 3s ease-in-out infinite',
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+      keyframes: {
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
+        },
+      },
+    },
+  },
+};
+```
+
+## Performance Considerations
+
+<AccordionGroup>
+  <Accordion title="Disable on Mobile">
+    Lenis smooth scroll is automatically disabled on screens < 1024px for better mobile performance.
+  </Accordion>
+  
+  <Accordion title="Use will-change Sparingly">
+    Only add `will-change` CSS property to elements actively animating. Remove it when done.
+  </Accordion>
+  
+  <Accordion title="Prefer Transform and Opacity">
+    Animate `transform` and `opacity` properties for best performance (GPU accelerated).
+  </Accordion>
+  
+  <Accordion title="Use AnimatePresence for Exit Animations">
+    Wrap components with `AnimatePresence` from Framer Motion to animate components when they unmount.
+  </Accordion>
+</AccordionGroup>
+
+## Common Animation Patterns
+
+<Tabs>
+  <Tab title="Fade In">
+    ```tsx
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    />
+    ```
+  </Tab>
+  <Tab title="Slide In">
+    ```tsx
+    <motion.div
+      initial={{ x: -100, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.6 }}
+    />
+    ```
+  </Tab>
+  <Tab title="Scale">
+    ```tsx
+    <motion.div
+      initial={{ scale: 0.8 }}
+      animate={{ scale: 1 }}
+      transition={{ duration: 0.4 }}
+    />
+    ```
+  </Tab>
+  <Tab title="Spring">
+    ```tsx
+    <motion.div
+      initial={{ y: 100 }}
+      animate={{ y: 0 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 100,
+        damping: 10 
+      }}
+    />
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  Lenis uses `lerp: 0.15` for a smooth, natural scrolling feel. Lower values = smoother but slower, higher values = snappier but less smooth.
+</Note>
+
+## Package Dependencies
+
+```json package.json
+{
+  "dependencies": {
+    "lenis": "latest",           // Smooth scrolling
+    "motion": "latest",          // Framer Motion fork
+    "tailwindcss-animate": "latest"  // Tailwind CSS animations
+  }
+}
+```
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Lenis Documentation" icon="scroll" href="https://lenis.studiofreight.com/">
+    Official Lenis smooth scroll docs
+  </Card>
+  <Card title="Motion Documentation" icon="sparkles" href="https://motion.dev/">
+    Motion (Framer Motion) documentation
+  </Card>
+  <Card title="Tailwind Animate" icon="wind" href="https://github.com/jamiebuilds/tailwindcss-animate">
+    Tailwind CSS animation plugin
+  </Card>
+  <Card title="UI Components" icon="palette" href="/features/ui-components">
+    Using animations with UI components
+  </Card>
+</CardGroup>

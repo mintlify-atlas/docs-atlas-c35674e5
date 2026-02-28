@@ -1,0 +1,399 @@
+---
+title: 'Authentication'
+description: 'Token-based authentication system with server and client support'
+icon: 'lock'
+---
+
+## Overview
+
+The Kars Template provides a flexible authentication system that works seamlessly across server and client components. It includes utilities for token management, protected routes, and authentication middleware.
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Token Management" icon="key">
+    Automatic token retrieval from cookies or headers
+  </Card>
+  <Card title="Auth Wrapper" icon="shield">
+    Protect pages with server-side authentication
+  </Card>
+  <Card title="Middleware" icon="filter">
+    Protect API routes with withAuth middleware
+  </Card>
+  <Card title="Flexible" icon="arrows-split">
+    Works with cookies and Bearer tokens
+  </Card>
+</CardGroup>
+
+## Core Components
+
+### getToken
+
+The `getToken` function retrieves authentication tokens from either cookies or Authorization headers.
+
+```tsx src/lib/auth/get-token.ts
+"use server";
+import { TOKEN_NAME } from "@/constants";
+import { cookies } from "next/headers";
+
+export default async function getToken(request?: Request) {
+  if (!request) {
+    // Server Component usage - read from cookies
+    const cookieStore = await cookies();
+    const token = cookieStore.get(TOKEN_NAME)?.value;
+    return token || null;
+  }
+
+  // API Route usage - check Authorization header first
+  const authHeader = request.headers.get("Authorization");
+  const cookieHeader = request.headers.get("Cookie");
+  let token = null;
+
+  if (authHeader?.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1];
+  } else if (cookieHeader) {
+    const cookies = cookieHeader.split(";").reduce(
+      (acc, cookie) => {
+        const [key, value] = cookie.trim().split("=");
+        acc[key] = value;
+        return acc;
+      },
+      {} as { [key: string]: string },
+    );
+
+    token = cookies[TOKEN_NAME];
+  }
+  
+  return token;
+}
+```
+
+#### Usage
+
+<Tabs>
+  <Tab title="Server Component">
+    ```tsx
+    import getToken from "@/lib/auth/get-token";
+    
+    export default async function ProfilePage() {
+      const token = await getToken();
+      
+      if (!token) {
+        redirect("/login");
+      }
+      
+      return <div>Protected content</div>;
+    }
+    ```
+  </Tab>
+  <Tab title="API Route">
+    ```tsx
+    import getToken from "@/lib/auth/get-token";
+    import { NextRequest } from "next/server";
+    
+    export async function GET(req: NextRequest) {
+      const token = await getToken(req);
+      
+      if (!token) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+      
+      // Process authenticated request
+      return Response.json({ message: "Success" });
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### AuthWrapper
+
+The `AuthWrapper` component provides server-side authentication protection for pages.
+
+```tsx src/lib/auth/auth-wrapper.tsx
+"use server";
+import { redirect } from "next/navigation";
+import getToken from "./get-token";
+import type { Route } from "next";
+
+export default async function AuthWrapper({
+  children,
+  redirectTo = "/",
+  redirectIfAuthed = false,
+  fallback,
+}: {
+  children: React.ReactNode;
+  redirectTo?: Route;
+  redirectIfAuthed?: boolean;
+  fallback?: React.ReactNode;
+}) {
+  const hasToken = !!(await getToken());
+  
+  if (redirectIfAuthed && hasToken) {
+    return redirect(redirectTo);
+  }
+  
+  if (!hasToken) {
+    if (fallback) return fallback;
+    return redirect(redirectTo);
+  }
+  
+  return <>{children}</>;
+}
+```
+
+#### Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `children` | `React.ReactNode` | - | Content to render if authenticated |
+| `redirectTo` | `Route` | `"/"` | Where to redirect if not authenticated |
+| `redirectIfAuthed` | `boolean` | `false` | Redirect if user IS authenticated (for login pages) |
+| `fallback` | `React.ReactNode` | - | Component to render instead of redirecting |
+
+#### Usage Examples
+
+<CodeGroup>
+```tsx Protected Page
+import AuthWrapper from "@/lib/auth/auth-wrapper";
+
+export default async function DashboardPage() {
+  return (
+    <AuthWrapper redirectTo="/login">
+      <div>
+        <h1>Dashboard</h1>
+        <p>This content is only visible to authenticated users</p>
+      </div>
+    </AuthWrapper>
+  );
+}
+```
+
+```tsx Login Page (Redirect if Authenticated)
+import AuthWrapper from "@/lib/auth/auth-wrapper";
+import LoginForm from "@/components/login-form";
+
+export default async function LoginPage() {
+  return (
+    <AuthWrapper 
+      redirectTo="/dashboard" 
+      redirectIfAuthed={true}
+    >
+      <LoginForm />
+    </AuthWrapper>
+  );
+}
+```
+
+```tsx With Fallback
+import AuthWrapper from "@/lib/auth/auth-wrapper";
+import LoginPrompt from "@/components/login-prompt";
+
+export default async function ProfilePage() {
+  return (
+    <AuthWrapper 
+      fallback={<LoginPrompt />}
+    >
+      <UserProfile />
+    </AuthWrapper>
+  );
+}
+```
+</CodeGroup>
+
+### withAuth Middleware
+
+Protect API routes with the `withAuth` middleware:
+
+```tsx src/lib/API/middleware.ts
+import type { NextRequest, NextResponse } from "next/server";
+import { APIError, handleAndReturnErrorResponse } from "./handler";
+import { TOKEN_NAME } from "@/constants";
+
+export type RouteParams = Record<string, string>;
+
+export type AuthRouteHandler<T extends RouteParams = RouteParams> = (
+  req: NextRequest,
+  token: string,
+  params: Promise<T>,
+) => Promise<NextResponse> | NextResponse;
+
+export function withAuth<T extends RouteParams>(
+  handler: AuthRouteHandler<T>,
+): (
+  req: NextRequest,
+  context: { params: Promise<T> },
+) => Promise<NextResponse> {
+  return async function (
+    req: NextRequest,
+    context: { params: Promise<T> },
+  ): Promise<NextResponse> {
+    try {
+      const token = req.cookies.get(TOKEN_NAME);
+
+      if (!token) {
+        throw new APIError({
+          code: "unauthorized",
+          message: "Unauthorized",
+        });
+      }
+
+      return await handler(req, token.value, context.params);
+    } catch (e) {
+      return handleAndReturnErrorResponse(e);
+    }
+  };
+}
+```
+
+#### API Route Example
+
+Here's how to use `withAuth` in an API route:
+
+```tsx app/api/user/profile/route.ts
+import { withAuth } from "@/lib/API/middleware";
+import { successResponse } from "@/lib/API/handler";
+import type { NextRequest } from "next/server";
+
+// This route is protected - requires authentication
+export const GET = withAuth(async (req: NextRequest, token: string) => {
+  // Token is guaranteed to exist here
+  // You can verify it, decode it, etc.
+  
+  // Example: Decode JWT token
+  const userId = decodeToken(token);
+  
+  // Fetch user data
+  const user = await getUserById(userId);
+  
+  return successResponse({
+    message: "Profile retrieved",
+    data: user,
+  });
+});
+
+export const PATCH = withAuth(async (req: NextRequest, token: string) => {
+  const body = await req.json();
+  const userId = decodeToken(token);
+  
+  // Update user profile
+  const updatedUser = await updateUser(userId, body);
+  
+  return successResponse({
+    message: "Profile updated",
+    data: updatedUser,
+  });
+});
+```
+
+#### Real Example from Template
+
+```tsx app/api/example/route.ts
+import { withAuth } from "@/lib/API/middleware";
+import { successResponse, handleAndReturnErrorResponse, APIError } from "@/lib/API/handler";
+import type { NextRequest } from "next/server";
+
+export const PATCH = withAuth(async (req, token, params) => {
+  try {
+    // This route is protected - only authenticated users can access it
+    
+    const random = Math.random();
+    if (random < 0.15) {
+      throw new APIError({
+        code: "internal_server_error",
+        message: "Random error occurred",
+      });
+    }
+    
+    return successResponse({
+      message: "Success Authenticated State",
+      status: 200,
+    });
+  } catch (error) {
+    return handleAndReturnErrorResponse(error);
+  }
+});
+```
+
+## Token Configuration
+
+Configure the token cookie name in your constants:
+
+```tsx src/constants.ts
+export const TOKEN_NAME = "auth_token";
+```
+
+## Authentication Flow
+
+<Steps>
+  <Step title="User Login">
+    User submits credentials to `/api/auth/login`
+  </Step>
+  <Step title="Token Generation">
+    Server validates credentials and generates a JWT token
+  </Step>
+  <Step title="Set Cookie">
+    Server sets the token as an HTTP-only cookie
+    ```tsx
+    cookies().set(TOKEN_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+    ```
+  </Step>
+  <Step title="Access Protected Resources">
+    Future requests automatically include the cookie
+  </Step>
+</Steps>
+
+## Client-Side Integration
+
+The API client automatically includes authentication tokens:
+
+```tsx
+import api from "@/lib/API/api";
+
+// Token is automatically attached
+const response = await api.get("/api/user/profile");
+```
+
+See [API Client](/features/api-client) for more details.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use HTTP-Only Cookies">
+    Store tokens in HTTP-only cookies to prevent XSS attacks. Never store tokens in localStorage.
+  </Accordion>
+  
+  <Accordion title="Validate Tokens on Server">
+    Always validate and verify tokens on the server side. Never trust client-side authentication state.
+  </Accordion>
+  
+  <Accordion title="Set Appropriate Expiration">
+    Set reasonable token expiration times (e.g., 7 days) and implement refresh token logic if needed.
+  </Accordion>
+  
+  <Accordion title="Use HTTPS in Production">
+    Always use HTTPS in production and set the `secure` flag on cookies.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  The template provides the authentication infrastructure, but you need to implement the actual token generation and validation logic using a library like `jsonwebtoken` or your preferred authentication service.
+</Warning>
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="API Client" icon="code" href="/features/api-client">
+    Using the authenticated API client
+  </Card>
+  <Card title="Rate Limiting" icon="gauge" href="/features/rate-limiting">
+    Protecting routes with rate limits
+  </Card>
+  <Card title="Validation" icon="check" href="/features/validation">
+    Validating request data
+  </Card>
+</CardGroup>

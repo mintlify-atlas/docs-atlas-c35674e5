@@ -1,0 +1,350 @@
+---
+title: 'UI Components'
+description: 'ShadCN UI component library with custom styling and variants'
+icon: 'palette'
+---
+
+## Overview
+
+Kars Template includes a comprehensive set of pre-built UI components powered by [ShadCN UI](https://ui.shadcn.com/). These components are built on top of Radix UI primitives and styled with Tailwind CSS, providing a modern and accessible design system.
+
+## Available Components
+
+The template includes 30+ production-ready components:
+
+<CardGroup cols={3}>
+  <Card title="Forms" icon="input-text">
+    Input, Textarea, Select, Checkbox, Switch, Field, Form
+  </Card>
+  <Card title="Layout" icon="grid">
+    Card, Separator, Tabs, Sheet, Sidebar, Scroll Area
+  </Card>
+  <Card title="Overlays" icon="layer-group">
+    Dialog, Alert Dialog, Confirm Dialog, Responsive Dialog, Drawer, Popover, Tooltip
+  </Card>
+  <Card title="Navigation" icon="compass">
+    Breadcrumb, Pagination, Dropdown Menu
+  </Card>
+  <Card title="Feedback" icon="bell">
+    Toast, Badge, Progress, Skeleton
+  </Card>
+  <Card title="Data Display" icon="table">
+    Table, Avatar, Marquee
+  </Card>
+</CardGroup>
+
+## Installation
+
+All components are already installed in `src/components/ui/`. Import them directly:
+
+```tsx
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+```
+
+## Component Examples
+
+### Button
+
+The Button component comes with multiple variants and sizes:
+
+<CodeGroup>
+```tsx src/components/ui/button.tsx
+import { Slot } from "radix-ui";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-gradient-to-b from-primary to-primary/70 text-primary-foreground",
+        destructive: "bg-gradient-to-b from-destructive to-destructive/90 text-white",
+        outline: "border border-input bg-background shadow-xs hover:bg-accent",
+        secondary: "bg-gradient-to-b from-secondary to-secondary/90",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+        success: "bg-gradient-to-b from-success to-success/90 text-white",
+      },
+      size: {
+        default: "h-9 px-4 py-2",
+        sm: "h-8 rounded-md px-3 text-xs",
+        lg: "h-10 rounded-md px-8",
+        icon: "size-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+);
+
+function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  ...props
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+  }) {
+  const Comp = asChild ? Slot : "button";
+  return (
+    <Comp
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  );
+}
+
+export { Button, buttonVariants };
+```
+
+```tsx Usage Example
+import { Button } from "@/components/ui/button";
+
+export function ButtonDemo() {
+  return (
+    <div className="flex gap-4">
+      <Button variant="default">Default</Button>
+      <Button variant="destructive">Destructive</Button>
+      <Button variant="outline">Outline</Button>
+      <Button variant="secondary">Secondary</Button>
+      <Button variant="ghost">Ghost</Button>
+      <Button variant="link">Link</Button>
+      <Button variant="success">Success</Button>
+    </div>
+  );
+}
+```
+</CodeGroup>
+
+#### Button Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `variant` | `"default" \| "destructive" \| "outline" \| "secondary" \| "ghost" \| "link" \| "success"` | `"default"` | Visual style variant |
+| `size` | `"default" \| "sm" \| "lg" \| "icon"` | `"default"` | Button size |
+| `asChild` | `boolean` | `false` | Renders as child element (using Radix Slot) |
+
+### Card
+
+Card components for displaying content containers:
+
+<CodeGroup>
+```tsx src/components/ui/card.tsx
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "rounded-xl border border-border/50 bg-card text-card-foreground shadow-sm",
+        className
+      )}
+      {...props}
+    />
+  )
+);
+
+const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("flex flex-col space-y-1.5 p-6", className)}
+      {...props}
+    />
+  )
+);
+
+const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
+  ({ className, ...props }, ref) => (
+    <h3
+      ref={ref}
+      className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+      {...props}
+    />
+  )
+);
+
+const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+  )
+);
+
+export { Card, CardHeader, CardTitle, CardContent };
+```
+
+```tsx Usage Example
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+export function CardDemo() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Card Title</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>Card content goes here</p>
+      </CardContent>
+    </Card>
+  );
+}
+```
+</CodeGroup>
+
+### Input
+
+Form input component with validation states:
+
+```tsx src/components/ui/input.tsx
+import { cn } from "@/lib/utils";
+import * as React from "react";
+
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  return (
+    <input
+      type={type}
+      className={cn(
+        "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs",
+        "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+        "aria-invalid:ring-destructive/20 aria-invalid:border-destructive",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export { Input };
+```
+
+## Component Categories
+
+### Form Components
+
+<Tabs>
+  <Tab title="Input">
+    ```tsx
+    import { Input } from "@/components/ui/input";
+    
+    <Input type="email" placeholder="Email" />
+    ```
+  </Tab>
+  <Tab title="Textarea">
+    ```tsx
+    import { Textarea } from "@/components/ui/textarea";
+    
+    <Textarea placeholder="Enter your message" />
+    ```
+  </Tab>
+  <Tab title="Select">
+    ```tsx
+    import { Select } from "@/components/ui/select";
+    
+    <Select>
+      <SelectTrigger>
+        <SelectValue placeholder="Select option" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="1">Option 1</SelectItem>
+        <SelectItem value="2">Option 2</SelectItem>
+      </SelectContent>
+    </Select>
+    ```
+  </Tab>
+  <Tab title="Checkbox">
+    ```tsx
+    import { Checkbox } from "@/components/ui/checkbox";
+    
+    <Checkbox id="terms" />
+    ```
+  </Tab>
+</Tabs>
+
+### Overlay Components
+
+<Tabs>
+  <Tab title="Dialog">
+    ```tsx
+    import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+    
+    <Dialog>
+      <DialogTrigger>Open</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Dialog Title</DialogTitle>
+        </DialogHeader>
+      </DialogContent>
+    </Dialog>
+    ```
+  </Tab>
+  <Tab title="Popover">
+    ```tsx
+    import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+    
+    <Popover>
+      <PopoverTrigger>Click me</PopoverTrigger>
+      <PopoverContent>Popover content</PopoverContent>
+    </Popover>
+    ```
+  </Tab>
+  <Tab title="Tooltip">
+    ```tsx
+    import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+    
+    <Tooltip>
+      <TooltipTrigger>Hover me</TooltipTrigger>
+      <TooltipContent>Tooltip text</TooltipContent>
+    </Tooltip>
+    ```
+  </Tab>
+</Tabs>
+
+## Customization
+
+All components use the `cn()` utility from `@/lib/utils` to merge Tailwind classes. You can customize any component by passing additional classes:
+
+```tsx
+<Button className="bg-blue-500 hover:bg-blue-600">
+  Custom Button
+</Button>
+
+<Card className="border-2 border-primary">
+  Custom Card
+</Card>
+```
+
+## Theming
+
+Components automatically adapt to your theme configuration in `tailwind.config.js`. The template supports light and dark modes out of the box.
+
+<Note>
+  All components are accessible by default, following WAI-ARIA standards through Radix UI primitives.
+</Note>
+
+## Further Reading
+
+<CardGroup cols={2}>
+  <Card title="ShadCN UI Docs" icon="book" href="https://ui.shadcn.com/docs">
+    Official ShadCN UI documentation
+  </Card>
+  <Card title="Radix UI" icon="layer-group" href="https://www.radix-ui.com/">
+    Underlying primitive components
+  </Card>
+  <Card title="Tailwind CSS" icon="palette" href="https://tailwindcss.com/">
+    Styling framework
+  </Card>
+  <Card title="Class Variance Authority" icon="code" href="https://cva.style/docs">
+    Component variant API
+  </Card>
+</CardGroup>

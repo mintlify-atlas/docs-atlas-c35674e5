@@ -1,0 +1,665 @@
+---
+title: 'Form Components'
+description: 'API reference for form components and input elements'
+---
+
+# Form Components
+
+Form components built with React Hook Form and Radix UI primitives.
+
+## Form
+
+Wrapper component that provides form context using React Hook Form's `FormProvider`.
+
+### Props
+
+Accepts all props from React Hook Form's `FormProvider`.
+
+<ParamField path="...methods" type="UseFormReturn" required>
+  Form methods from `useForm()` hook. Spread all methods as props.
+</ParamField>
+
+### Usage
+
+```tsx
+import { useForm } from "react-hook-form";
+import { Form } from "@/components/ui/form";
+
+export default function Example() {
+  const form = useForm();
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        {/* Form fields */}
+      </form>
+    </Form>
+  );
+}
+```
+
+---
+
+## FormField
+
+Controller component that connects form inputs to React Hook Form.
+
+### Props
+
+<ParamField path="name" type="string" required>
+  The name of the field in the form data.
+</ParamField>
+
+<ParamField path="control" type="Control" required>
+  Form control from `useForm()` or `useFormContext()`.
+</ParamField>
+
+<ParamField path="render" type="function" required>
+  Render function that receives field props. Returns the form input element.
+</ParamField>
+
+### Usage
+
+```tsx
+import { FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useFormContext } from "react-hook-form";
+
+export default function Example() {
+  const { control } = useFormContext();
+
+  return (
+    <FormField
+      control={control}
+      name="email"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>Email</FormLabel>
+          <FormControl>
+            <Input type="email" {...field} />
+          </FormControl>
+        </FormItem>
+      )}
+    />
+  );
+}
+```
+
+---
+
+## FormItem
+
+Container for a single form field including label, input, description, and error message.
+
+### Props
+
+Accepts standard HTML div attributes.
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply.
+</ParamField>
+
+---
+
+## FormLabel
+
+Label component that automatically connects to the form field and shows error state.
+
+### Props
+
+Accepts all Radix UI Label props.
+
+<ParamField path="htmlFor" type="string">
+  Automatically set by form context. Associates label with input.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes. Error styling is automatically applied.
+</ParamField>
+
+---
+
+## FormControl
+
+Wrapper that connects child input to form field with proper ARIA attributes.
+
+### Props
+
+Uses Radix UI's Slot component to pass props to child element.
+
+---
+
+## FormDescription
+
+Helper text component for providing additional context about a form field.
+
+### Props
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply.
+</ParamField>
+
+---
+
+## FormMessage
+
+Error message component that displays validation errors.
+
+### Props
+
+<ParamField path="children" type="ReactNode">
+  Custom error message. If not provided, uses error from form validation.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply.
+</ParamField>
+
+---
+
+## Complete Form Example
+
+<Tabs>
+  <Tab title="Basic Form">
+    ```tsx
+    import { useForm } from "react-hook-form";
+    import { zodResolver } from "@hookform/resolvers/zod";
+    import * as z from "zod";
+    import {
+      Form,
+      FormField,
+      FormItem,
+      FormLabel,
+      FormControl,
+      FormDescription,
+      FormMessage,
+    } from "@/components/ui/form";
+    import { Input } from "@/components/ui/input";
+    import { Button } from "@/components/ui/button";
+
+    const formSchema = z.object({
+      email: z.string().email("Invalid email address"),
+      password: z.string().min(8, "Password must be at least 8 characters"),
+    });
+
+    export default function LoginForm() {
+      const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+          email: "",
+          password: "",
+        },
+      });
+
+      function onSubmit(values: z.infer<typeof formSchema>) {
+        console.log(values);
+      }
+
+      return (
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="you@example.com" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    We'll never share your email.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit">Sign In</Button>
+          </form>
+        </Form>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Field Components
+
+Custom field components that provide flexible layouts and styling options.
+
+### FieldSet
+
+Grouping container for related form fields.
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply.
+</ParamField>
+
+```tsx
+import { FieldSet, FieldLegend } from "@/components/ui/field";
+
+<FieldSet>
+  <FieldLegend>Personal Information</FieldLegend>
+  {/* Form fields */}
+</FieldSet>
+```
+
+### FieldLegend
+
+Legend for a fieldset.
+
+<ParamField path="variant" type="string" default="legend">
+  Style variant. Options: `legend`, `label`
+</ParamField>
+
+### FieldGroup
+
+Container for organizing multiple fields with responsive layouts.
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply.
+</ParamField>
+
+### Field
+
+Flexible field container with orientation support.
+
+<ParamField path="orientation" type="string" default="vertical">
+  Layout orientation. Options:
+  - `vertical` - Stacked layout
+  - `horizontal` - Side-by-side layout
+  - `responsive` - Vertical on mobile, horizontal on larger screens
+</ParamField>
+
+### FieldLabel
+
+Label component for Field.
+
+<ParamField path="htmlFor" type="string">
+  Associates label with input element.
+</ParamField>
+
+### FieldContent
+
+Container for field input and related elements.
+
+### FieldTitle
+
+Title text for a field.
+
+### FieldDescription
+
+Helper text for providing additional field context.
+
+### FieldError
+
+Error message component for field validation errors.
+
+<ParamField path="errors" type="Array<{message?: string}>">
+  Array of error objects. Automatically renders error messages.
+</ParamField>
+
+### Field Components Example
+
+```tsx
+import {
+  Field,
+  FieldLabel,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+
+export default function Example() {
+  return (
+    <Field orientation="vertical">
+      <FieldLabel htmlFor="username">Username</FieldLabel>
+      <FieldContent>
+        <Input id="username" placeholder="Enter username" />
+        <FieldDescription>
+          Choose a unique username for your account.
+        </FieldDescription>
+        <FieldError errors={[{ message: "Username is required" }]} />
+      </FieldContent>
+    </Field>
+  );
+}
+```
+
+---
+
+## Input
+
+Standard text input component.
+
+### Props
+
+<ParamField path="type" type="string" default="text">
+  Input type (text, email, password, search, file, etc.).
+</ParamField>
+
+<ParamField path="placeholder" type="string">
+  Placeholder text.
+</ParamField>
+
+<ParamField path="disabled" type="boolean">
+  Disables the input.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply.
+</ParamField>
+
+### Usage
+
+<Tabs>
+  <Tab title="Text Input">
+    ```tsx
+    import { Input } from "@/components/ui/input";
+
+    export default function Example() {
+      return <Input type="text" placeholder="Enter your name" />;
+    }
+    ```
+  </Tab>
+  <Tab title="File Input">
+    ```tsx
+    import { Input } from "@/components/ui/input";
+
+    export default function Example() {
+      return <Input type="file" accept="image/*" />;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Textarea
+
+Multi-line text input component.
+
+### Props
+
+<ParamField path="placeholder" type="string">
+  Placeholder text.
+</ParamField>
+
+<ParamField path="rows" type="number">
+  Number of visible text lines.
+</ParamField>
+
+<ParamField path="disabled" type="boolean">
+  Disables the textarea.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply.
+</ParamField>
+
+### Usage
+
+```tsx
+import { Textarea } from "@/components/ui/textarea";
+
+export default function Example() {
+  return (
+    <Textarea
+      placeholder="Enter your message..."
+      rows={4}
+    />
+  );
+}
+```
+
+---
+
+## Checkbox
+
+Checkbox input component with custom styling.
+
+### Props
+
+<ParamField path="checked" type="boolean | 'indeterminate'">
+  Checked state. Can be `true`, `false`, or `'indeterminate'`.
+</ParamField>
+
+<ParamField path="onCheckedChange" type="(checked: boolean) => void">
+  Callback when checked state changes.
+</ParamField>
+
+<ParamField path="disabled" type="boolean">
+  Disables the checkbox.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply.
+</ParamField>
+
+### Usage
+
+<Tabs>
+  <Tab title="Basic">
+    ```tsx
+    import { Checkbox } from "@/components/ui/checkbox";
+    import { Label } from "@/components/ui/label";
+
+    export default function Example() {
+      return (
+        <div className="flex items-center gap-2">
+          <Checkbox id="terms" />
+          <Label htmlFor="terms">Accept terms and conditions</Label>
+        </div>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Controlled">
+    ```tsx
+    import { Checkbox } from "@/components/ui/checkbox";
+    import { useState } from "react";
+
+    export default function Example() {
+      const [checked, setChecked] = useState(false);
+
+      return (
+        <Checkbox
+          checked={checked}
+          onCheckedChange={setChecked}
+        />
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Indeterminate">
+    ```tsx
+    import { Checkbox } from "@/components/ui/checkbox";
+
+    export default function Example() {
+      return <Checkbox checked="indeterminate" />;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Label
+
+Label component for form inputs.
+
+### Props
+
+<ParamField path="htmlFor" type="string">
+  Associates label with input by ID.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply.
+</ParamField>
+
+### Usage
+
+```tsx
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+
+export default function Example() {
+  return (
+    <div>
+      <Label htmlFor="email">Email Address</Label>
+      <Input id="email" type="email" />
+    </div>
+  );
+}
+```
+
+---
+
+## Select
+
+Dropdown select component with search and grouping support.
+
+### Components
+
+- `Select` - Root component
+- `SelectTrigger` - Button that opens the dropdown
+- `SelectValue` - Displays selected value
+- `SelectContent` - Dropdown content container
+- `SelectItem` - Individual option
+- `SelectGroup` - Group of related items
+- `SelectLabel` - Label for a group
+- `SelectSeparator` - Visual separator
+
+### Props
+
+<ParamField path="value" type="string">
+  Controlled selected value.
+</ParamField>
+
+<ParamField path="onValueChange" type="(value: string) => void">
+  Callback when selection changes.
+</ParamField>
+
+<ParamField path="defaultValue" type="string">
+  Default selected value.
+</ParamField>
+
+<ParamField path="disabled" type="boolean">
+  Disables the select.
+</ParamField>
+
+### Usage
+
+<Tabs>
+  <Tab title="Basic">
+    ```tsx
+    import {
+      Select,
+      SelectTrigger,
+      SelectValue,
+      SelectContent,
+      SelectItem,
+    } from "@/components/ui/select";
+
+    export default function Example() {
+      return (
+        <Select>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a fruit" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="apple">Apple</SelectItem>
+            <SelectItem value="banana">Banana</SelectItem>
+            <SelectItem value="orange">Orange</SelectItem>
+          </SelectContent>
+        </Select>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="With Groups">
+    ```tsx
+    import {
+      Select,
+      SelectContent,
+      SelectGroup,
+      SelectLabel,
+      SelectItem,
+    } from "@/components/ui/select";
+
+    export default function Example() {
+      return (
+        <Select>
+          <SelectTrigger>
+            <SelectValue placeholder="Select..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectLabel>Fruits</SelectLabel>
+              <SelectItem value="apple">Apple</SelectItem>
+              <SelectItem value="banana">Banana</SelectItem>
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>Vegetables</SelectLabel>
+              <SelectItem value="carrot">Carrot</SelectItem>
+              <SelectItem value="broccoli">Broccoli</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="In Form">
+    ```tsx
+    import { FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
+    import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+    import { useFormContext } from "react-hook-form";
+
+    export default function Example() {
+      const { control } = useFormContext();
+
+      return (
+        <FormField
+          control={control}
+          name="country"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Country</FormLabel>
+              <FormControl>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="us">United States</SelectItem>
+                    <SelectItem value="uk">United Kingdom</SelectItem>
+                    <SelectItem value="ca">Canada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+      );
+    }
+    ```
+  </Tab>
+</Tabs>

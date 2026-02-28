@@ -1,0 +1,188 @@
+---
+title: Site Configuration
+description: Configure your Kars Next.js template with the website configuration object
+---
+
+The Kars Next.js template uses a centralized configuration system to manage site-wide settings. All configuration is stored in `src/constants/site.ts`.
+
+## Website Configuration Object
+
+The main configuration object is the `website` constant, which follows this interface:
+
+```typescript
+interface Website {
+  name: string;
+  url: string;
+  accentColor: string;
+  baseUrl: string;
+  enableLenis?: boolean;
+  socials?: Record<
+    string,
+    {
+      url: string;
+      icon: React.JSX.Element | LucideIcon | IconType;
+    }
+  >;
+}
+```
+
+## Configuration Options
+
+### Basic Settings
+
+Edit `src/constants/site.ts` to customize your site:
+
+```typescript
+export const website: Website = {
+  name: "kars",
+  url: APP_URL!,
+  accentColor: "#ff6666",
+  baseUrl: "https://kars.bio",
+  enableLenis: false,
+} as const;
+```
+
+#### name
+The name of your application. Used in metadata and throughout the app.
+
+```typescript
+name: "kars"
+```
+
+#### url
+The application URL, automatically set based on environment:
+- **Production**: Uses `NEXT_PUBLIC_APP_URL` environment variable
+- **Development**: Defaults to `http://localhost:3000`
+
+```typescript
+url: APP_URL!
+```
+
+#### accentColor
+The primary accent color for your site. This is used for:
+- Theme color in viewport metadata (see `src/app/layout.tsx:23`)
+- Browser theme color
+- Potential UI accent elements
+
+```typescript
+accentColor: "#ff6666"
+```
+
+#### baseUrl
+The canonical base URL for your production site. Used in:
+- SEO metadata
+- Open Graph tags
+- Canonical URLs
+
+```typescript
+baseUrl: "https://kars.bio"
+```
+
+#### enableLenis (optional)
+Enables or disables [Lenis](https://lenis.darkroom.engineering/) smooth scrolling. Set to `true` to enable scroll hijacking for smoother scroll animations.
+
+```typescript
+enableLenis: false // Set to true to enable smooth scrolling
+```
+
+### Social Links (optional)
+
+Add social media links to your site:
+
+```typescript
+import { Github, Twitter, Linkedin } from "lucide-react";
+import { FaDiscord } from "react-icons/fa";
+
+export const website: Website = {
+  // ... other config
+  socials: {
+    github: {
+      url: "https://github.com/yourusername",
+      icon: Github,
+    },
+    twitter: {
+      url: "https://twitter.com/yourusername",
+      icon: Twitter,
+    },
+    discord: {
+      url: "https://discord.gg/yourinvite",
+      icon: FaDiscord,
+    },
+    linkedin: {
+      url: "https://linkedin.com/in/yourusername",
+      icon: Linkedin,
+    },
+  },
+};
+```
+
+## Environment Variables
+
+The configuration system relies on environment variables. Create a `.env.local` file in your project root:
+
+```bash
+NEXT_PUBLIC_APP_URL="https://yourdomain.com"
+```
+
+<Note>
+  The `NEXT_PUBLIC_` prefix is required for environment variables that need to be accessible in the browser.
+</Note>
+
+## Usage in Your App
+
+Import and use the configuration throughout your application:
+
+```typescript
+import { website } from "@/constants";
+
+// Use in components
+const MyComponent = () => {
+  return (
+    <div style={{ color: website.accentColor }}>
+      Welcome to {website.name}
+    </div>
+  );
+};
+
+// Use in metadata
+export const metadata = {
+  title: website.name,
+  description: `Welcome to ${website.name}`,
+};
+```
+
+## Layout Integration
+
+The configuration is automatically integrated into your app's root layout (`src/app/layout.tsx:23`):
+
+```typescript
+export const viewport: Viewport = {
+  themeColor: website.accentColor || "#ffffff",
+};
+```
+
+This sets the browser's theme color to match your accent color.
+
+## Best Practices
+
+<Steps>
+  <Step title="Keep it centralized">
+    Store all site-wide configuration in `src/constants/site.ts` to maintain a single source of truth.
+  </Step>
+  
+  <Step title="Use TypeScript types">
+    Leverage the `Website` interface to ensure type safety when accessing configuration values.
+  </Step>
+  
+  <Step title="Environment-specific URLs">
+    Always use `APP_URL` for the `url` field to ensure correct URLs across environments.
+  </Step>
+  
+  <Step title="Test color contrast">
+    When changing `accentColor`, ensure it meets accessibility standards for text and UI elements.
+  </Step>
+</Steps>
+
+<Warning>
+  Changes to `src/constants/site.ts` require a restart of the development server to take effect.
+</Warning>

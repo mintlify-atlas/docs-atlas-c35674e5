@@ -1,0 +1,473 @@
+---
+title: 'Rate Limiting'
+description: 'Protect your API routes with configurable rate limiting middleware'
+icon: 'gauge'
+---
+
+## Overview
+
+The Kars Template includes a robust rate limiting system to protect your API routes from abuse. It supports both in-memory and Redis-based rate limiting with configurable windows and request limits.
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Multiple Backends" icon="database">
+    In-memory or Redis-based storage
+  </Card>
+  <Card title="Configurable" icon="sliders">
+    Custom time windows and request limits
+  </Card>
+  <Card title="Per-IP Limiting" icon="location-dot">
+    Automatic IP-based tracking
+  </Card>
+  <Card title="Easy Integration" icon="plug">
+    Simple middleware wrapper
+  </Card>
+</CardGroup>
+
+## Rate Limiter Implementation
+
+### Core Interfaces
+
+```tsx src/lib/API/rate-limiter.ts
+import { Redis } from "ioredis";
+
+export interface RateLimiterOptions {
+  windowMs: number;      // Time window in milliseconds
+  maxRequests: number;   // Maximum requests per window
+  keyPrefix?: string;    // Optional prefix for keys
+}
+
+export interface RateLimiterResponse {
+  success: boolean;      // Whether request is allowed
+  remaining: number;     // Remaining requests in window
+  resetTime: number;     // When the limit resets (timestamp)
+}
+
+export interface RateLimiter {
+  checkRateLimit(key: string): Promise<RateLimiterResponse>;
+}
+```
+
+### InMemoryRateLimiter
+
+For development and small-scale applications:
+
+```tsx src/lib/API/rate-limiter.ts
+export class InMemoryRateLimiter implements RateLimiter {
+  private store: Record<string, { count: number; startTime: number }> = {};
+  private options: RateLimiterOptions;
+
+  constructor(options: RateLimiterOptions) {
+    this.options = options;
+  }
+
+  async checkRateLimit(key: string): Promise<RateLimiterResponse> {
+    const now = Date.now();
+    const prefixedKey = `${this.options.keyPrefix || ""}${key}`;
+
+    // Clean up expired entries
+    if (this.store[prefixedKey]) {
+      if (now - this.store[prefixedKey].startTime >= this.options.windowMs) {
+        delete this.store[prefixedKey];
+      }
+    }
+
+    // First request in window
+    if (!this.store[prefixedKey]) {
+      this.store[prefixedKey] = {
+        count: 1,
+        startTime: now,
+      };
+      return {
+        success: true,
+        remaining: this.options.maxRequests - 1,
+        resetTime: now + this.options.windowMs,
+      };
+    }
+
+    const record = this.store[prefixedKey];
+    const remaining = this.options.maxRequests - record.count;
+
+    // Rate limit exceeded
+    if (remaining <= 0) {
+      return {
+        success: false,
+        remaining: 0,
+        resetTime: record.startTime + this.options.windowMs,
+      };
+    }
+
+    // Increment counter
+    record.count++;
+    return {
+      success: true,
+      remaining: remaining - 1,
+      resetTime: record.startTime + this.options.windowMs,
+    };
+  }
+}
+```
+
+### RedisRateLimiter
+
+For production and distributed systems:
+
+```tsx src/lib/API/rate-limiter.ts
+export class RedisRateLimiter implements RateLimiter {
+  private redis: Redis;
+  private options: RateLimiterOptions;
+
+  constructor(redisClient: Redis, options: RateLimiterOptions) {
+    this.redis = redisClient;
+    this.options = options;
+  }
+
+  async checkRateLimit(key: string): Promise<RateLimiterResponse> {
+    const now = Date.now();
+    const prefixedKey = `${this.options.keyPrefix || ""}${key}`;
+
+    const multi = this.redis.multi();
+
+    // Remove old entries, count current, add new entry, set expiration
+    multi.zremrangebyscore(prefixedKey, 0, now - this.options.windowMs);
+    multi.zcard(prefixedKey);
+    multi.zadd(prefixedKey, now, `${now}-${Math.random()}`);
+    multi.pexpire(prefixedKey, this.options.windowMs);
+
+    const [, requestCount] = (await multi.exec()) as [any, [null, number]];
+    const count = requestCount[1];
+
+    if (count >= this.options.maxRequests) {
+      const oldestTimestamp = await this.redis.zrange(
+        prefixedKey,
+        0,
+        0,
+        "WITHSCORES",
+      );
+      const resetTime = oldestTimestamp.length
+        ? parseInt(oldestTimestamp[1]) + this.options.windowMs
+        : now + this.options.windowMs;
+
+      return {
+        success: false,
+        remaining: 0,
+        resetTime,
+      };
+    }
+
+    return {
+      success: true,
+      remaining: this.options.maxRequests - count - 1,
+      resetTime: now + this.options.windowMs,
+    };
+  }
+}
+```
+
+### Factory Function
+
+```tsx src/lib/API/rate-limiter.ts
+export function createRateLimiter(
+  type: "memory" | "redis",
+  options: RateLimiterOptions,
+  redisClient?: Redis,
+): RateLimiter {
+  if (type === "redis" && !redisClient) {
+    throw new Error("Redis client is required for Redis rate limiter");
+  }
+
+  return type === "memory"
+    ? new InMemoryRateLimiter(options)
+    : new RedisRateLimiter(redisClient!, options);
+}
+```
+
+## withRateLimit Middleware
+
+The `withRateLimit` middleware automatically protects API routes:
+
+```tsx src/lib/API/middleware.ts
+import type { NextRequest, NextResponse } from "next/server";
+import { rateLimitMiddleware, RateLimitConfig } from "./rate-limit.middleware";
+import { getDefaultRateLimitConfig } from "@/lib/cache/rate-limit";
+
+export function withRateLimit<T extends RouteParams>(
+  handler: SimpleRouteHandler<T>,
+  config?: RateLimitConfig,
+): (
+  req: NextRequest,
+  context: { params: Promise<T> },
+) => Promise<NextResponse> {
+  return async function (
+    req: NextRequest,
+    context: { params: Promise<T> },
+  ): Promise<NextResponse> {
+    try {
+      const rateLimitConfig = config || (await getDefaultRateLimitConfig());
+      const rateLimitResponse = await rateLimitMiddleware(req, rateLimitConfig);
+
+      // Rate limit exceeded
+      if (rateLimitResponse && rateLimitResponse.status !== 200) {
+        return rateLimitResponse;
+      }
+
+      const params = context.params;
+      return await handler(req, {} as never, params);
+    } catch (e) {
+      return handleAndReturnErrorResponse(e);
+    }
+  };
+}
+```
+
+## Usage
+
+### Basic API Route Protection
+
+```tsx app/api/example/route.ts
+import { withRateLimit } from "@/lib/API/middleware";
+import { successResponse } from "@/lib/API/handler";
+import type { NextRequest } from "next/server";
+
+// Protected with default rate limit (from config)
+export const GET = withRateLimit(async (req: NextRequest) => {
+  return successResponse({
+    message: "Hello World",
+  });
+});
+```
+
+### Custom Rate Limit Configuration
+
+```tsx app/api/strict/route.ts
+import { withRateLimit } from "@/lib/API/middleware";
+import { successResponse } from "@/lib/API/handler";
+import type { NextRequest } from "next/server";
+
+// Custom rate limit: 10 requests per minute
+export const POST = withRateLimit(
+  async (req: NextRequest) => {
+    return successResponse({
+      message: "Rate limited endpoint",
+    });
+  },
+  {
+    type: "memory",
+    options: {
+      windowMs: 60 * 1000,        // 1 minute
+      maxRequests: 10,            // 10 requests
+      keyPrefix: "strict_api:",   // Optional prefix
+    },
+  }
+);
+```
+
+### Redis-Based Rate Limiting
+
+```tsx app/api/production/route.ts
+import { withRateLimit } from "@/lib/API/middleware";
+import { successResponse } from "@/lib/API/handler";
+import { Redis } from "ioredis";
+import type { NextRequest } from "next/server";
+
+const redis = new Redis(process.env.REDIS_URL);
+
+export const GET = withRateLimit(
+  async (req: NextRequest) => {
+    return successResponse({
+      message: "Redis rate limited",
+    });
+  },
+  {
+    type: "redis",
+    redisClient: redis,
+    options: {
+      windowMs: 15 * 60 * 1000,   // 15 minutes
+      maxRequests: 100,           // 100 requests
+      keyPrefix: "api:v1:",
+    },
+  }
+);
+```
+
+## Configuration Examples
+
+<Tabs>
+  <Tab title="Generous">
+    ```typescript
+    {
+      windowMs: 60 * 60 * 1000,  // 1 hour
+      maxRequests: 1000,          // 1000 requests
+    }
+    ```
+    Suitable for public APIs with high traffic
+  </Tab>
+  <Tab title="Standard">
+    ```typescript
+    {
+      windowMs: 15 * 60 * 1000,  // 15 minutes
+      maxRequests: 100,           // 100 requests
+    }
+    ```
+    Good for most API endpoints
+  </Tab>
+  <Tab title="Strict">
+    ```typescript
+    {
+      windowMs: 60 * 1000,       // 1 minute
+      maxRequests: 10,            // 10 requests
+    }
+    ```
+    For sensitive operations (login, signup)
+  </Tab>
+  <Tab title="Very Strict">
+    ```typescript
+    {
+      windowMs: 60 * 1000,       // 1 minute
+      maxRequests: 3,             // 3 requests
+    }
+    ```
+    For password reset, 2FA verification
+  </Tab>
+</Tabs>
+
+## Rate Limit Headers
+
+The middleware automatically adds standard rate limit headers to responses:
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1640000000000
+```
+
+Access them in your client:
+
+```tsx
+const response = await fetch("/api/example");
+
+const limit = response.headers.get("X-RateLimit-Limit");
+const remaining = response.headers.get("X-RateLimit-Remaining");
+const reset = response.headers.get("X-RateLimit-Reset");
+
+console.log(`${remaining}/${limit} requests remaining`);
+console.log(`Resets at ${new Date(parseInt(reset))}`);
+```
+
+## Error Response
+
+When rate limit is exceeded, the API returns:
+
+```json
+{
+  "success": false,
+  "message": "Rate limit exceeded. Please try again later."
+}
+```
+
+With HTTP status code `429 Too Many Requests`.
+
+## Combining with Authentication
+
+You can combine rate limiting with authentication:
+
+```tsx app/api/protected/route.ts
+import { withAuth, withRateLimit } from "@/lib/API/middleware";
+import { successResponse } from "@/lib/API/handler";
+
+// Apply rate limiting first, then authentication
+export const POST = withRateLimit(
+  withAuth(async (req, token) => {
+    // Both rate limited AND authenticated
+    return successResponse({
+      message: "Protected and rate limited",
+    });
+  })
+);
+```
+
+<Note>
+  Rate limiting is applied per IP address by default. Authenticated routes may want to implement per-user rate limiting instead.
+</Note>
+
+## Production Setup
+
+### Setting Up Redis
+
+<Steps>
+  <Step title="Install Redis">
+    For production, use a managed Redis service like:
+    - [Upstash](https://upstash.com/)
+    - [Redis Cloud](https://redis.com/cloud/)
+    - Self-hosted Redis
+  </Step>
+  
+  <Step title="Install ioredis">
+    ```bash
+    npm install ioredis
+    ```
+  </Step>
+  
+  <Step title="Configure Redis Client">
+    ```typescript src/lib/redis.ts
+    import { Redis } from "ioredis";
+    
+    export const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
+    ```
+  </Step>
+  
+  <Step title="Use in Rate Limiter">
+    ```typescript
+    import { redis } from "@/lib/redis";
+    import { createRateLimiter } from "@/lib/API/rate-limiter";
+    
+    const limiter = createRateLimiter(
+      "redis",
+      {
+        windowMs: 60 * 1000,
+        maxRequests: 10,
+      },
+      redis
+    );
+    ```
+  </Step>
+</Steps>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Redis in Production">
+    In-memory rate limiting doesn't work across multiple server instances. Use Redis for production deployments.
+  </Accordion>
+  
+  <Accordion title="Different Limits for Different Endpoints">
+    Apply stricter limits to sensitive endpoints (auth, payments) and more generous limits to public APIs.
+  </Accordion>
+  
+  <Accordion title="Monitor Rate Limit Hits">
+    Log when users hit rate limits to identify potential abuse or legitimate high-traffic patterns.
+  </Accordion>
+  
+  <Accordion title="Consider Per-User Limits">
+    For authenticated APIs, consider implementing per-user rate limiting instead of per-IP.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  The in-memory rate limiter stores data in server memory and resets when the server restarts. Use Redis for persistent rate limiting in production.
+</Warning>
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/features/authentication">
+    Protect routes with authentication
+  </Card>
+  <Card title="API Client" icon="code" href="/features/api-client">
+    Making authenticated API requests
+  </Card>
+  <Card title="Validation" icon="check" href="/features/validation">
+    Request data validation
+  </Card>
+</CardGroup>
