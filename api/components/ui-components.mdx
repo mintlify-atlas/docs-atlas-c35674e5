@@ -505,3 +505,369 @@ export default function Example() {
   );
 }
 ```
+
+---
+
+## Select
+
+A dropdown select component for choosing from a list of options.
+
+### Components
+
+- `Select` - Root component
+- `SelectGroup` - Groups related options
+- `SelectValue` - Displays selected value
+- `SelectTrigger` - Button that opens dropdown
+- `SelectContent` - Dropdown container
+- `SelectLabel` - Group label
+- `SelectItem` - Individual option
+- `SelectSeparator` - Visual separator
+
+### Props
+
+**SelectTrigger**
+
+<ParamField path="className" type="string">
+  Additional CSS classes
+</ParamField>
+
+**SelectItem**
+
+<ParamField path="value" type="string" required>
+  Value of the option
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default="false">
+  Whether the option is disabled
+</ParamField>
+
+### Usage
+
+```tsx
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+export default function Example() {
+  return (
+    <Select>
+      <SelectTrigger className="w-[180px]">
+        <SelectValue placeholder="Select a fruit" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="apple">Apple</SelectItem>
+        <SelectItem value="banana">Banana</SelectItem>
+        <SelectItem value="orange">Orange</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+```
+
+---
+
+## Switch
+
+A toggle switch component for boolean values.
+
+### Props
+
+<ParamField path="checked" type="boolean">
+  Controlled checked state
+</ParamField>
+
+<ParamField path="defaultChecked" type="boolean">
+  Default checked state for uncontrolled usage
+</ParamField>
+
+<ParamField path="onCheckedChange" type="(checked: boolean) => void">
+  Callback when checked state changes
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default="false">
+  Whether the switch is disabled
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes
+</ParamField>
+
+### Usage
+
+```tsx
+import { Switch } from "@/components/ui/switch";
+import { useState } from "react";
+
+export default function Example() {
+  const [enabled, setEnabled] = useState(false);
+
+  return (
+    <div className="flex items-center space-x-2">
+      <Switch
+        id="airplane-mode"
+        checked={enabled}
+        onCheckedChange={setEnabled}
+      />
+      <label htmlFor="airplane-mode">
+        Airplane Mode
+      </label>
+    </div>
+  );
+}
+```
+
+---
+
+## Slider
+
+A slider component for selecting numeric values.
+
+### Props
+
+<ParamField path="min" type="number" default={0}>
+  Minimum value
+</ParamField>
+
+<ParamField path="max" type="number" default={100}>
+  Maximum value
+</ParamField>
+
+<ParamField path="step" type="number" default={1}>
+  Step increment
+</ParamField>
+
+<ParamField path="value" type="number[]">
+  Controlled value (array for range slider)
+</ParamField>
+
+<ParamField path="defaultValue" type="number[]">
+  Default value for uncontrolled usage
+</ParamField>
+
+<ParamField path="onValueChange" type="(value: number[]) => void">
+  Callback when value changes
+</ParamField>
+
+<ParamField path="showTooltip" type="boolean" default="false">
+  Whether to show value tooltip on drag
+</ParamField>
+
+<ParamField path="tooltipContent" type="(value: number) => number">
+  Custom tooltip content formatter
+</ParamField>
+
+<ParamField path="disabled" type="boolean" default="false">
+  Whether the slider is disabled
+</ParamField>
+
+### Usage
+
+<Tabs>
+  <Tab title="Single Value">
+    ```tsx
+    import { Slider } from "@/components/ui/slider";
+    import { useState } from "react";
+
+    export default function Example() {
+      const [value, setValue] = useState([50]);
+
+      return (
+        <div className="w-full max-w-sm space-y-2">
+          <label>Volume: {value[0]}%</label>
+          <Slider
+            value={value}
+            onValueChange={setValue}
+            max={100}
+            step={1}
+          />
+        </div>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Range">
+    ```tsx
+    import { Slider } from "@/components/ui/slider";
+    import { useState } from "react";
+
+    export default function Example() {
+      const [range, setRange] = useState([20, 80]);
+
+      return (
+        <div className="w-full max-w-sm space-y-2">
+          <label>Price Range: ${range[0]} - ${range[1]}</label>
+          <Slider
+            value={range}
+            onValueChange={setRange}
+            max={100}
+            step={1}
+          />
+        </div>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="With Tooltip">
+    ```tsx
+    import { Slider } from "@/components/ui/slider";
+
+    export default function Example() {
+      return (
+        <Slider
+          defaultValue={[50]}
+          max={100}
+          step={1}
+          showTooltip={true}
+          tooltipContent={(value) => value}
+        />
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Progress
+
+A progress indicator component.
+
+### Props
+
+<ParamField path="value" type="number">
+  Progress value (0-100)
+</ParamField>
+
+<ParamField path="max" type="number" default={100}>
+  Maximum progress value
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes
+</ParamField>
+
+### Usage
+
+```tsx
+import { Progress } from "@/components/ui/progress";
+import { useState, useEffect } from "react";
+
+export default function Example() {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setProgress((prev) => (prev >= 100 ? 0 : prev + 10));
+    }, 500);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="w-full max-w-sm space-y-2">
+      <p>Progress: {progress}%</p>
+      <Progress value={progress} />
+    </div>
+  );
+}
+```
+
+---
+
+## Separator
+
+A visual separator component (divider).
+
+### Props
+
+<ParamField path="orientation" type="'horizontal' | 'vertical'" default="horizontal">
+  Orientation of the separator
+</ParamField>
+
+<ParamField path="decorative" type="boolean" default="true">
+  Whether separator is decorative (no semantic meaning)
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes
+</ParamField>
+
+### Usage
+
+```tsx
+import { Separator } from "@/components/ui/separator";
+
+export default function Example() {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3>Section 1</h3>
+        <p>Content here</p>
+      </div>
+      
+      <Separator />
+      
+      <div>
+        <h3>Section 2</h3>
+        <p>Content here</p>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Skeleton
+
+A skeleton loader component for loading states.
+
+### Props
+
+<ParamField path="className" type="string">
+  Additional CSS classes
+</ParamField>
+
+### Usage
+
+```tsx
+import { Skeleton } from "@/components/ui/skeleton";
+
+export default function LoadingCard() {
+  return (
+    <div className="flex flex-col space-y-3">
+      <Skeleton className="h-[125px] w-[250px] rounded-xl" />
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-[250px]" />
+        <Skeleton className="h-4 w-[200px]" />
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Additional Components
+
+The template includes many more components. For a complete list, see:
+
+- `alert-dialog` - Modal confirmation dialogs
+- `breadcrumb` - Navigation breadcrumbs
+- `confirm-dialog` - Confirmation dialog variant
+- `drawer` - Side drawer/sheet
+- `pagination` - Page navigation
+- `popover` - Floating content container
+- `responsive-dialog` - Adaptive dialog/drawer
+- `scroll-area` - Custom scrollable area
+- `sheet` - Side panel
+- `sidebar` - Navigation sidebar
+- `table` - Data tables
+- `toast` - Toast notifications
+
+All components are built with Radix UI primitives and styled with Tailwind CSS. Refer to the [ShadCN documentation](https://ui.shadcn.com/) for detailed usage of individual components.
+

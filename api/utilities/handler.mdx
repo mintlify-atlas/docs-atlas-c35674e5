@@ -1,0 +1,319 @@
+---
+title: "Error Handler"
+description: "API error handling utilities and response formatters"
+---
+
+The handler module provides utilities for consistent API error handling, response formatting, and error code management.
+
+## ErrorCode Enum
+
+Standard error codes used throughout the API.
+
+```typescript
+enum ErrorCode {
+  BAD_REQUEST = "bad_request",
+  NOT_FOUND = "not_found",
+  INTERNAL_SERVER_ERROR = "internal_server_error",
+  UNAUTHORIZED = "unauthorized",
+  FORBIDDEN = "forbidden",
+  RATE_LIMIT_EXCEEDED = "rate_limit_exceeded",
+  EXCEEDED_LIMIT = "exceeded_limit",
+  CONFLICT = "conflict",
+  UNPROCESSABLE_ENTITY = "unprocessable_entity",
+  VALIDATION_ERROR = "validation_error",
+}
+```
+
+Each error code maps to a standard HTTP status code:
+
+| Error Code | HTTP Status | Description |
+|------------|-------------|-------------|
+| `bad_request` | 400 | Invalid request format |
+| `unauthorized` | 401 | Authentication required |
+| `forbidden` | 403 | Insufficient permissions |
+| `exceeded_limit` | 403 | Resource limit exceeded |
+| `not_found` | 404 | Resource not found |
+| `conflict` | 409 | Resource conflict |
+| `unprocessable_entity` | 422 | Valid format but semantically incorrect |
+| `validation_error` | 422 | Schema validation failed |
+| `rate_limit_exceeded` | 429 | Too many requests |
+| `internal_server_error` | 500 | Server error |
+
+## APIError Class
+
+Custom error class for API errors with error codes.
+
+```typescript
+class APIError extends Error {
+  public readonly code: ErrorCodeType;
+  
+  constructor({ code, message }: { 
+    code: ErrorCodeType; 
+    message: string 
+  })
+}
+```
+
+<ParamField path="code" type="ErrorCodeType" required>
+  Error code from the ErrorCode enum
+</ParamField>
+
+<ParamField path="message" type="string" required>
+  Human-readable error message
+</ParamField>
+
+**Example:**
+
+```typescript
+import { APIError, ErrorCode } from "@/lib/API/handler";
+
+throw new APIError({
+  code: ErrorCode.UNAUTHORIZED,
+  message: "Invalid credentials"
+});
+```
+
+## formatZodError()
+
+Formats Zod validation errors into a consistent structure.
+
+```typescript
+function formatZodError(zodError: z.ZodError): ZodValidationError[]
+```
+
+<ParamField path="zodError" type="z.ZodError" required>
+  Zod error object from schema validation
+</ParamField>
+
+**Returns:** Array of validation errors with field paths and messages
+
+```typescript
+interface ZodValidationError {
+  field: string;
+  message: string;
+  code?: string;
+}
+```
+
+**Example:**
+
+```typescript
+import { formatZodError } from "@/lib/API/handler";
+import { z } from "zod";
+
+const schema = z.object({
+  email: z.string().email(),
+  age: z.number().min(18)
+});
+
+try {
+  schema.parse({ email: "invalid", age: 15 });
+} catch (error) {
+  if (error instanceof z.ZodError) {
+    const errors = formatZodError(error);
+    // [
+    //   { field: "email", message: "Invalid email", code: "invalid_string" },
+    //   { field: "age", message: "Number must be greater than or equal to 18" }
+    // ]
+  }
+}
+```
+
+## handleApiError()
+
+Processes any error and returns a standardized error response structure.
+
+```typescript
+function handleApiError(error: any): {
+  error: { 
+    code: string; 
+    message: string; 
+    details?: ZodValidationError[] 
+  };
+  status: number;
+}
+```
+
+<ParamField path="error" type="any" required>
+  Error object to process (APIError, ZodError, ValidationResult, or generic Error)
+</ParamField>
+
+**Returns:** Standardized error object with HTTP status code
+
+**Handles:**
+- `ZodError` - Zod validation errors
+- `APIError` - Custom API errors
+- `ValidationResult` - Validation helper errors
+- Array of field errors
+- Generic errors
+
+**Example:**
+
+```typescript
+import { handleApiError } from "@/lib/API/handler";
+
+export async function POST(req: NextRequest) {
+  try {
+    // ... your code
+  } catch (error) {
+    const { error: errorObj, status } = handleApiError(error);
+    return NextResponse.json(errorObj, { status });
+  }
+}
+```
+
+## handleAndReturnErrorResponse()
+
+Convenience function that calls `handleApiError` and returns a Next.js response.
+
+```typescript
+function handleAndReturnErrorResponse(
+  err: unknown,
+  headers?: Record<string, string>
+): NextResponse
+```
+
+<ParamField path="err" type="unknown" required>
+  Error to handle
+</ParamField>
+
+<ParamField path="headers" type="Record<string, string>">
+  Optional headers to include in the response
+</ParamField>
+
+**Returns:** Next.js `NextResponse` with error JSON and appropriate status code
+
+**Response Format:**
+
+```typescript
+{
+  success: false,
+  message: string,
+  details?: ZodValidationError[]
+}
+```
+
+**Example:**
+
+```typescript
+import { handleAndReturnErrorResponse } from "@/lib/API/handler";
+
+export async function POST(req: NextRequest) {
+  try {
+    // ... your code
+  } catch (error) {
+    return handleAndReturnErrorResponse(error);
+  }
+}
+```
+
+## successResponse()
+
+Creates a standardized success response with optional rate limit headers.
+
+```typescript
+function successResponse<Body = unknown>({
+  message,
+  status = 200,
+  data,
+  rateLimitResponse,
+}: ResponseOptions<Body>): NextResponse
+```
+
+<ParamField path="message" type="string" required>
+  Success message
+</ParamField>
+
+<ParamField path="status" type="number" default={200}>
+  HTTP status code
+</ParamField>
+
+<ParamField path="data" type="Body">
+  Response data (optional)
+</ParamField>
+
+<ParamField path="rateLimitResponse" type="NextResponse">
+  Rate limit response to copy headers from (optional)
+</ParamField>
+
+**Returns:** Next.js `NextResponse` with success JSON
+
+**Response Format:**
+
+```typescript
+{
+  success: true,
+  message: string,
+  data?: Body
+}
+```
+
+**Example:**
+
+```typescript
+import { successResponse } from "@/lib/API/handler";
+
+export async function GET(req: NextRequest) {
+  const users = await fetchUsers();
+  
+  return successResponse({
+    message: "Users fetched successfully",
+    data: users
+  });
+}
+```
+
+## Error Response Examples
+
+### Validation Error
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "details": [
+    {
+      "field": "email",
+      "message": "Invalid email address",
+      "code": "invalid_string"
+    },
+    {
+      "field": "password",
+      "message": "String must contain at least 8 character(s)"
+    }
+  ]
+}
+```
+
+### API Error
+
+```json
+{
+  "success": false,
+  "message": "Unauthorized"
+}
+```
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "message": "Operation completed successfully",
+  "data": {
+    "id": "123",
+    "name": "John Doe"
+  }
+}
+```
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Validation" icon="check" href="/api/utilities/validation">
+    Request validation with Zod schemas
+  </Card>
+  <Card title="API Client" icon="code" href="/api/utilities/api-client">
+    Making type-safe API requests
+  </Card>
+</CardGroup>

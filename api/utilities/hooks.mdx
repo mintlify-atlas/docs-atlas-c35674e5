@@ -1,0 +1,214 @@
+---
+title: "React Hooks"
+description: "Custom React hooks for common functionality"
+---
+
+The template includes custom React hooks for media queries and touch device detection.
+
+## useMediaQuery
+
+React hook for responsive design that listens to media query changes.
+
+```typescript
+function useMediaQuery(query: string): boolean
+```
+
+<ParamField path="query" type="string" required>
+  CSS media query string to match against
+</ParamField>
+
+**Returns:** `boolean` - `true` if the media query matches, `false` otherwise
+
+**Source:** `src/hooks/use-media-query.ts`
+
+### Usage
+
+<Tabs>
+  <Tab title="Basic">
+    ```tsx
+    import { useMediaQuery } from "@/hooks/use-media-query";
+
+    export default function ResponsiveComponent() {
+      const isMobile = useMediaQuery("(max-width: 768px)");
+
+      return (
+        <div>
+          {isMobile ? (
+            <MobileLayout />
+          ) : (
+            <DesktopLayout />
+          )}
+        </div>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Multiple Queries">
+    ```tsx
+    import { useMediaQuery } from "@/hooks/use-media-query";
+
+    export default function AdaptiveComponent() {
+      const isMobile = useMediaQuery("(max-width: 640px)");
+      const isTablet = useMediaQuery("(min-width: 641px) and (max-width: 1024px)");
+      const isDesktop = useMediaQuery("(min-width: 1025px)");
+
+      return (
+        <div>
+          {isMobile && <p>Mobile view</p>}
+          {isTablet && <p>Tablet view</p>}
+          {isDesktop && <p>Desktop view</p>}
+        </div>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Dark Mode">
+    ```tsx
+    import { useMediaQuery } from "@/hooks/use-media-query";
+
+    export default function ThemeAwareComponent() {
+      const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
+
+      return (
+        <div className={prefersDark ? "dark-theme" : "light-theme"}>
+          Current theme: {prefersDark ? "Dark" : "Light"}
+        </div>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Common Media Queries
+
+| Query | Description |
+|-------|-------------|
+| `(max-width: 640px)` | Mobile devices |
+| `(min-width: 641px) and (max-width: 768px)` | Small tablets |
+| `(min-width: 769px) and (max-width: 1024px)` | Tablets |
+| `(min-width: 1025px)` | Desktop |
+| `(orientation: portrait)` | Portrait orientation |
+| `(orientation: landscape)` | Landscape orientation |
+| `(prefers-color-scheme: dark)` | Dark mode preference |
+| `(prefers-reduced-motion: reduce)` | Reduced motion preference |
+
+### Implementation Details
+
+The hook:
+- Updates automatically when the media query match changes
+- Cleans up event listeners on unmount
+- Returns the current match status as a boolean
+- Works with any valid CSS media query
+
+<Note>
+The hook initializes with `false` and updates after mount to prevent hydration mismatches in SSR.
+</Note>
+
+---
+
+## useTouchPrimary
+
+React hook to detect if touch is the primary input method on the device.
+
+```typescript
+function useTouchPrimary(): boolean
+```
+
+**Returns:** `boolean` - `true` if touch is the primary input method, `false` for mouse/trackpad
+
+**Source:** `src/hooks/use-has-primary-touch.ts`
+
+### Usage
+
+```tsx
+import { useTouchPrimary } from "@/hooks/use-has-primary-touch";
+
+export default function InteractiveComponent() {
+  const isTouchDevice = useTouchPrimary();
+
+  return (
+    <button
+      className={isTouchDevice ? "touch-friendly" : "mouse-optimized"}
+      style={{
+        padding: isTouchDevice ? "12px 24px" : "8px 16px"
+      }}
+    >
+      {isTouchDevice ? "Tap me" : "Click me"}
+    </button>
+  );
+}
+```
+
+### Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Touch-Friendly UI" icon="hand-pointer">
+    Increase button sizes and touch targets for mobile devices
+  </Card>
+  <Card title="Gesture Support" icon="hand">
+    Enable swipe gestures only on touch devices
+  </Card>
+  <Card title="Hover Effects" icon="computer-mouse">
+    Disable hover effects on touch devices to prevent sticky states
+  </Card>
+  <Card title="Tooltips" icon="circle-info">
+    Show tooltips on click for touch, on hover for mouse
+  </Card>
+</CardGroup>
+
+### Example: Conditional Hover
+
+```tsx
+import { useTouchPrimary } from "@/hooks/use-has-primary-touch";
+
+export default function Card() {
+  const isTouchDevice = useTouchPrimary();
+
+  return (
+    <div
+      className={`
+        card
+        ${!isTouchDevice && "hover:shadow-lg hover:scale-105"}
+        transition-all
+      `}
+    >
+      <h3>Interactive Card</h3>
+      <p>Hover effects only on non-touch devices</p>
+    </div>
+  );
+}
+```
+
+### Implementation Details
+
+The hook detects touch devices by checking:
+- `'ontouchstart' in window` - Touch events support
+- `navigator.maxTouchPoints > 0` - Number of touch points
+- `(pointer: coarse)` media query - Primary input precision
+
+<Warning>
+The hook returns `false` initially and updates after the first user interaction to accurately detect the primary input method.
+</Warning>
+
+### Tailwind Integration
+
+Tailwind CSS includes responsive variants for touch devices:
+
+```tsx
+<button className="p-4 md:p-2 touch:p-6">
+  Adaptive padding
+</button>
+```
+
+However, `useTouchPrimary` provides more control and can detect touch capability at runtime.
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="UI Components" icon="palette" href="/features/ui-components">
+    Pre-built responsive components
+  </Card>
+  <Card title="Customization" icon="paintbrush" href="/guides/customization">
+    Customize styles and themes
+  </Card>
+</CardGroup>

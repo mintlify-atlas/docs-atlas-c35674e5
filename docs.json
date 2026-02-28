@@ -67,8 +67,10 @@
             "group": "Utilities",
             "pages": [
               "api/utilities/api-client",
+              "api/utilities/handler",
               "api/utilities/validation",
-              "api/utilities/rate-limiter"
+              "api/utilities/rate-limiter",
+              "api/utilities/hooks"
             ]
           }
         ]
